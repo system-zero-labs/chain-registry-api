@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+mod hydrate;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -11,16 +12,34 @@ struct Args {
 enum Sub {
     #[command(about = "Run the API server")]
     Serve {
-        #[arg(short, long, default_value = "8675", help = "Port to bind", env = "PORT")]
+        #[arg(
+            short,
+            long,
+            default_value = "8675",
+            help = "Port to bind",
+            env = "PORT"
+        )]
         port: u16,
     },
 
     #[command(about = "Download data from Chain Registry and store in database")]
     Hydrate {
-        #[arg(long, default_value = "https://github.com/cosmos/chain-registry", help = "Chain Registry git URL")]
+        #[arg(
+            long,
+            default_value = "https://github.com/cosmos/chain-registry",
+            help = "Chain Registry git URL"
+        )]
         git_remote: String,
+
         #[arg(long, default_value = "main", help = "Git branch or tag")]
-        git_ref:  String,
+        git_ref: String,
+
+        #[arg(
+            long,
+            default_value = "chain-registry",
+            help = "Path to dir for git clone"
+        )]
+        path: String,
     },
 }
 
@@ -29,6 +48,12 @@ fn main() {
 
     match cli.sub {
         Sub::Serve { port } => println!("Serving on port {}", port),
-        Sub::Hydrate { git_remote, git_ref } => println!("Hydrating from {}#{}", git_remote, git_ref),
+        Sub::Hydrate {
+            git_remote,
+            git_ref,
+            path,
+        } => {
+            hydrate::shallow_clone(git_remote, git_ref, path).unwrap();
+        }
     }
 }
