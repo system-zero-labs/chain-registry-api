@@ -9,7 +9,6 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Sub {
-
     #[command(about = "Run the API server")]
     Serve {
         #[arg(short, long, default_value = "8675", help = "Port to bind", env = "PORT")]
@@ -20,6 +19,8 @@ enum Sub {
     Hydrate {
         #[arg(long, default_value = "https://github.com/cosmos/chain-registry", help = "Chain Registry git URL")]
         git_remote: String,
+        #[arg(long, default_value = "main", help = "Git branch or tag")]
+        git_ref:  String,
     },
 }
 
@@ -28,6 +29,6 @@ fn main() {
 
     match cli.sub {
         Sub::Serve { port } => println!("Serving on port {}", port),
-        Sub::Hydrate { git_remote} => println!("Hydrating using {}: TODO", git_remote),
+        Sub::Hydrate { git_remote, git_ref } => println!("Hydrating from {}#{}", git_remote, git_ref),
     }
 }
