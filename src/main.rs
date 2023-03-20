@@ -31,7 +31,7 @@ enum Sub {
         )]
         git_remote: String,
 
-        #[arg(long, default_value = "main", help = "Git branch or tag")]
+        #[arg(long, default_value = "master", help = "Git branch or tag")]
         git_ref: String,
 
         #[arg(
@@ -53,6 +53,7 @@ fn main() {
             git_ref,
             path,
         } => {
+            println!("Cloning into {}...", path);
             hydrate::shallow_clone(git_remote, git_ref, path).unwrap();
         }
     }
