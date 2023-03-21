@@ -11,6 +11,4 @@ description = "An API for the Cosmos Chain Registry (https://github.com/DavidNix
 [dependencies]
 anyhow = { version = "1.0.70", features = ["backtrace"] }
 clap = { version = "4.1.11", features = ["derive", "env"] }
-
-[dev-dependencies]
 tempfile = "3.4.0"

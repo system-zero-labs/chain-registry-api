@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 mod hydrate;
+use tempfile::TempDir;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -34,12 +35,8 @@ enum Sub {
         #[arg(long, default_value = "master", help = "Git branch or tag")]
         git_ref: String,
 
-        #[arg(
-            long,
-            default_value = "chain-registry",
-            help = "Path to dir for git clone"
-        )]
-        path: String,
+        #[arg(long, help = "Path to dir for git clone", required = false)]
+        path: Option<String>,
     },
 }
 
@@ -52,9 +49,12 @@ fn main() {
             git_remote,
             git_ref,
             path,
-        } => {
-            println!("Cloning into {}...", path);
-            hydrate::shallow_clone(git_remote, git_ref, path).unwrap();
-        }
+        } => hydrate_chain_registry(git_remote, git_ref, path),
     }
+}
+
+fn hydrate_chain_registry(remote: String, git_ref: String, path: Option<String>) {
+    let path = path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
+    println!("Cloning {} {} into {}...", remote, git_ref, path);
+    hydrate::shallow_clone(remote, git_ref, path).unwrap();
 }
