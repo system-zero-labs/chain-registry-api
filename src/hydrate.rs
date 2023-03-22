@@ -1,10 +1,9 @@
 use std::fs;
 use std::path;
 
-// TODO: vectors are PathBuf so the caller can use the paths directly
 pub struct ChainDirs {
-    mainnets: Vec<String>,
-    testnets: Vec<String>,
+    mainnets: Vec<path::PathBuf>,
+    testnets: Vec<path::PathBuf>,
 }
 
 pub fn shallow_clone(
@@ -30,45 +29,26 @@ pub fn shallow_clone(
         );
     }
 
-    let mainnets = fs::read_dir(clone_dir.clone())?
-        .filter_map(|f| {
-            let f = f.unwrap().path();
-            if !f.is_dir() {
-                return None;
-            }
-            match f.file_name() {
-                Some(f) => {
-                    let name = f.to_str().unwrap();
-                    if name.starts_with("_") || name.starts_with("testnets") {
-                        return None;
-                    }
-                    return Some(name.to_string());
-                }
-                _ => None,
-            }
-        })
-        .collect();
-
-    let testnets = fs::read_dir(clone_dir.join("testnets"))?
-        .filter_map(|f| {
-            let f = f.unwrap().path();
-            if !f.is_dir() {
-                return None;
-            }
-            match f.file_name() {
-                Some(f) => {
-                    let name = f.to_str().unwrap();
-                    if name.starts_with("_") {
-                        return None;
-                    }
-                    return Some(name.to_string());
-                }
-                _ => None,
-            }
-        })
-        .collect();
-
+    let mainnets = collect_chains(clone_dir.clone())?;
+    let testnets = collect_chains(clone_dir.join("testnets"))?;
     Ok(ChainDirs { mainnets, testnets })
+}
+
+fn collect_chains(dir: path::PathBuf) -> anyhow::Result<Vec<path::PathBuf>> {
+    let found = fs::read_dir(dir)?
+        .filter_map(|f| {
+            let f = f.unwrap().path();
+            if !f.is_dir() {
+                return None;
+            }
+            return Some(f);
+        })
+        .filter(|f| {
+            let fname = f.file_name().unwrap().to_str().unwrap();
+            !fname.starts_with("_") || !fname.starts_with("testnets")
+        })
+        .collect();
+    Ok(found)
 }
 
 #[cfg(test)]
@@ -89,25 +69,38 @@ mod tests {
 
         assert!(temp_dir.path().join("cosmoshub/chain.json").exists());
 
-        assert!(chains.mainnets.len() > 1);
-        assert!(
-            chains.mainnets.contains(&"cosmoshub".to_string()),
-            "{:?}",
-            chains.mainnets
-        );
-        assert!(
-            chains.mainnets.contains(&"osmosis".to_string()),
-            "{:?}",
-            chains.mainnets
-        );
-        assert!(!chains.mainnets.contains(&".".to_string()));
+        let mainnets: Vec<String> = chains
+            .mainnets
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
+            .collect();
 
-        assert!(chains.testnets.len() > 1);
+        assert!(mainnets.len() > 1);
         assert!(
-            chains.testnets.contains(&"cosmoshubtestnet".to_string()),
+            mainnets.contains(&"cosmoshub".to_string()),
             "{:?}",
-            chains.testnets
+            mainnets
         );
-        assert!(!chains.testnets.contains(&".".to_string()));
+        assert!(mainnets.contains(&"osmosis".to_string()), "{:?}", mainnets);
+        assert!(!mainnets.contains(&".".to_string()), "{:?}", mainnets);
+        assert!(
+            !mainnets.contains(&"testnets".to_string()),
+            "{:?}",
+            mainnets
+        );
+
+        let testnets: Vec<String> = chains
+            .testnets
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
+            .collect();
+
+        assert!(testnets.len() > 1);
+        assert!(
+            testnets.contains(&"cosmoshubtestnet".to_string()),
+            "{:?}",
+            testnets
+        );
+        assert!(!testnets.contains(&".".to_string()));
     }
 }
