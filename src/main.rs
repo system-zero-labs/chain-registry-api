@@ -54,7 +54,8 @@ fn main() {
 }
 
 fn hydrate_chain_registry(remote: String, git_ref: String, path: Option<String>) {
-    let path = path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
-    println!("Cloning {} {} into {}...", remote, git_ref, path);
-    hydrate::shallow_clone(remote, git_ref, path).unwrap();
+    let clone_dir =
+        path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
+    println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
+    hydrate::shallow_clone(remote, git_ref, clone_dir.into()).expect("shallow clone failed");
 }
