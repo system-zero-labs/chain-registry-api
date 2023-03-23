@@ -45,7 +45,7 @@ fn collect_chains(dir: path::PathBuf) -> anyhow::Result<Vec<path::PathBuf>> {
         })
         .filter(|f| {
             let fname = f.file_name().unwrap().to_str().unwrap();
-            !fname.starts_with("_") || !fname.starts_with("testnets")
+            !(fname.starts_with("_") || fname.starts_with("testnets"))
         })
         .collect();
     Ok(found)
@@ -69,13 +69,15 @@ mod tests {
 
         assert!(temp_dir.path().join("cosmoshub/chain.json").exists());
 
+        assert!(chains.mainnets.len() > 1);
+        assert!(chains.mainnets.iter().all(|p| p.exists() && p.is_dir()));
+
         let mainnets: Vec<String> = chains
             .mainnets
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
             .collect();
 
-        assert!(mainnets.len() > 1);
         assert!(
             mainnets.contains(&"cosmoshub".to_string()),
             "{:?}",
@@ -88,6 +90,9 @@ mod tests {
             "{:?}",
             mainnets
         );
+
+        assert!(chains.testnets.len() > 1);
+        assert!(chains.testnets.iter().all(|p| p.exists() && p.is_dir()));
 
         let testnets: Vec<String> = chains
             .testnets
