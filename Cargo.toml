@@ -1,0 +1,14 @@
+[package]
+name = "chain-registry-api"
+version = "0.1.0"
+edition = "2021"
+authors = ["David Nix"]
+description = "An API for the Cosmos Chain Registry (https://github.com/DavidNix/chain-registry-api.git"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# TODO: add https://github.com/juhaku/utoipa for OpenAPI spec generation
+[dependencies]
+anyhow = { version = "1.0.70", features = ["backtrace"] }
+clap = { version = "4.1.11", features = ["derive", "env"] }
+tempfile = "3.4.0"
