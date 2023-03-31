@@ -1,0 +1,2 @@
+# These settings are for local development only
+export PGPASSWORD=postgres
