@@ -1,15 +1,16 @@
+use sqlx::pool::PoolConnection;
 use std::fs;
-use std::path;
+use std::path::PathBuf;
 
 pub struct ChainDirs {
-    mainnets: Vec<path::PathBuf>,
-    testnets: Vec<path::PathBuf>,
+    mainnets: Vec<PathBuf>,
+    testnets: Vec<PathBuf>,
 }
 
 pub fn shallow_clone(
     remote: String,
     git_ref: String,
-    clone_dir: path::PathBuf,
+    clone_dir: PathBuf,
 ) -> anyhow::Result<ChainDirs> {
     let mut cmd = std::process::Command::new("git");
     cmd.arg("clone")
@@ -34,7 +35,7 @@ pub fn shallow_clone(
     Ok(ChainDirs { mainnets, testnets })
 }
 
-fn collect_chains(dir: path::PathBuf) -> anyhow::Result<Vec<path::PathBuf>> {
+fn collect_chains(dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
     let found = fs::read_dir(dir)?
         .filter_map(|f| {
             let f = f.unwrap().path();
@@ -51,9 +52,20 @@ fn collect_chains(dir: path::PathBuf) -> anyhow::Result<Vec<path::PathBuf>> {
     Ok(found)
 }
 
+pub fn save_chain(
+    conn: PoolConnection<sqlx::Postgres>,
+    path: PathBuf,
+    network: String,
+) -> anyhow::Result<()> {
+    anyhow::bail!("not implemented")
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::hydrate::shallow_clone;
+    use crate::hydrate::{save_chain, shallow_clone};
+    use sqlx::PgPool;
+    use std::fs::File;
+    use std::io::Write;
     use tempfile::TempDir;
 
     #[test]
@@ -107,5 +119,24 @@ mod tests {
             testnets
         );
         assert!(!testnets.contains(&".".to_string()));
+    }
+
+    #[sqlx::test]
+    async fn test_save_chain(pool: PgPool) -> sqlx::Result<()> {
+        let test_path = TempDir::new().unwrap().into_path().join("test.json");
+        let mut file = File::create(test_path.clone())?;
+        file.write_all(b"stub data")?;
+
+        let mut conn = pool.acquire().await?;
+
+        save_chain(conn, test_path.clone(), "testnet".to_string()).unwrap();
+
+        // sqlx::query("SELECT * FROM chain")
+        //     .fetch_one(&mut conn)
+        //     .await?;
+
+        // assert_eq!(foo.get::<String>("bar"), "foobar!");
+
+        Ok(())
     }
 }
