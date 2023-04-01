@@ -52,18 +52,51 @@ fn collect_chains(dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
     Ok(found)
 }
 
-pub fn save_chain(
-    conn: PoolConnection<sqlx::Postgres>,
+pub async fn save_chain(
+    conn: &mut PoolConnection<sqlx::Postgres>,
     path: PathBuf,
     network: String,
 ) -> anyhow::Result<()> {
-    anyhow::bail!("not implemented")
+    let chain_name = path.file_name().unwrap().to_str().unwrap();
+    let chain_json = match fs::read_to_string(path.join("chain.json")) {
+        Ok(c) => c,
+        Err(err) => anyhow::bail!(
+            "failed to read chain.json for chain {} {}: {:?}",
+            chain_name,
+            network,
+            err,
+        ),
+    };
+    let assets_json = fs::read_to_string(path.join("assetlist.json")).unwrap_or("{}".to_string());
+
+    match sqlx::query!(
+        r#"
+        INSERT INTO chain (name, network, chain_data, asset_data)
+        VALUES ($1, $2, $3, $4)
+        "#,
+        chain_name,
+        network,
+        sqlx::types::JsonValue::String(chain_json),
+        sqlx::types::JsonValue::String(assets_json),
+    )
+    .execute(conn)
+    .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => anyhow::bail!(
+            "failed to insert chain {} {}: {:?}",
+            chain_name,
+            network,
+            err,
+        ),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::hydrate::{save_chain, shallow_clone};
     use sqlx::PgPool;
+    use std::fs;
     use std::fs::File;
     use std::io::Write;
     use tempfile::TempDir;
@@ -123,19 +156,26 @@ mod tests {
 
     #[sqlx::test]
     async fn test_save_chain(pool: PgPool) -> sqlx::Result<()> {
-        let test_path = TempDir::new().unwrap().into_path().join("test.json");
-        let mut file = File::create(test_path.clone())?;
-        file.write_all(b"stub data")?;
+        let test_path = TempDir::new().unwrap().into_path().join("cosmos");
+        fs::create_dir(test_path.clone()).unwrap();
+        let mut file = File::create(test_path.clone().join("chain.json"))?;
+        file.write_all(b"stub chain data")?;
+        let mut file = File::create(test_path.clone().join("assetlist.json"))?;
+        file.write_all(b"stub asset data")?;
 
         let mut conn = pool.acquire().await?;
 
-        save_chain(conn, test_path.clone(), "testnet".to_string()).unwrap();
+        save_chain(&mut conn, test_path.clone(), "testnet".to_string())
+            .await
+            .unwrap();
 
-        // sqlx::query("SELECT * FROM chain")
-        //     .fetch_one(&mut conn)
-        //     .await?;
-
-        // assert_eq!(foo.get::<String>("bar"), "foobar!");
+        let chain = sqlx::query!("SELECT * FROM chain")
+            .fetch_one(&mut conn)
+            .await?;
+        assert_eq!(chain.name, "cosmos");
+        assert_eq!(chain.network, "testnet");
+        assert_eq!(chain.chain_data, "stub chain data");
+        assert_eq!(chain.asset_data, "stub asset data");
 
         Ok(())
     }

@@ -8,6 +8,7 @@ BEGIN
                      FROM chain
                      ORDER BY created_at DESC
                      LIMIT 10000);
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 

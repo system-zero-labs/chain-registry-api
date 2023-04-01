@@ -9,15 +9,13 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CREATE TYPE network AS ENUM ('mainnet', 'testnet');
-
 CREATE TABLE chain
 (
-    id         uuid        NOT NULL,
-    PRIMARY KEY (id),
+    id         SERIAL PRIMARY KEY,
     name       TEXT        NOT NULL,
-    network    network     NOT NULL,
-    raw_data   jsonb       NOT NULL,
+    network    TEXT        NOT NULL,
+    chain_data jsonb       NOT NULL,
+    asset_data jsonb       NOT NULL,
     created_at timestamptz NOT NULL
 );
 
