@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 mod hydrate;
+mod peers;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tempfile::TempDir;
 
@@ -91,13 +92,13 @@ async fn hydrate_chain_registry(
     let mut conn = pool.acquire().await.unwrap();
 
     for chain in chains.mainnets {
-        match hydrate::save_chain(&mut conn, chain.to_path_buf(), "mainnet".to_string()).await {
+        match hydrate::insert_chain(&mut conn, chain.to_path_buf(), "mainnet".to_string()).await {
             Ok(_) => {}
             Err(err) => println!("Failed to save mainnet chain {:?}: {:?}", chain, err),
         }
     }
     for chain in chains.testnets {
-        match hydrate::save_chain(&mut conn, chain.to_path_buf(), "testnet".to_string()).await {
+        match hydrate::insert_chain(&mut conn, chain.to_path_buf(), "testnet".to_string()).await {
             Ok(_) => {}
             Err(err) => println!("Failed to save testnet chain {:?}: {:?}", chain, err),
         }

@@ -52,7 +52,7 @@ fn collect_chains(dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
     Ok(found)
 }
 
-pub async fn save_chain(
+pub async fn insert_chain(
     conn: &mut PoolConnection<sqlx::Postgres>,
     path: PathBuf,
     network: String,
@@ -94,7 +94,7 @@ pub async fn save_chain(
 
 #[cfg(test)]
 mod tests {
-    use crate::hydrate::{save_chain, shallow_clone};
+    use crate::hydrate::{insert_chain, shallow_clone};
     use sqlx::PgPool;
     use std::fs;
     use std::fs::File;
@@ -167,7 +167,7 @@ mod tests {
 
         let mut conn = pool.acquire().await?;
 
-        save_chain(&mut conn, test_path.clone(), "testnet".to_string())
+        insert_chain(&mut conn, test_path.clone(), "testnet".to_string())
             .await
             .unwrap();
 
