@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use std::path::Path;
 mod hydrate;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tempfile::TempDir;
@@ -38,6 +39,13 @@ enum Sub {
 
         #[arg(long, help = "Path to dir for git clone", required = false)]
         path: Option<String>,
+
+        #[arg(
+            long,
+            default_value = "false",
+            help = "Keep the git clone after hydrating"
+        )]
+        keep_clone: bool,
     },
 }
 
@@ -62,7 +70,8 @@ async fn main() {
             git_remote,
             git_ref,
             path,
-        } => hydrate_chain_registry(pool, git_remote, git_ref, path).await,
+            keep_clone,
+        } => hydrate_chain_registry(pool, git_remote, git_ref, path, keep_clone).await,
     }
 }
 
@@ -71,12 +80,13 @@ async fn hydrate_chain_registry(
     remote: String,
     git_ref: String,
     path: Option<String>,
+    keep_clone: bool,
 ) {
     let clone_dir =
         path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
     println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
-    let chains =
-        hydrate::shallow_clone(remote, git_ref, clone_dir.into()).expect("shallow clone failed");
+    let chains = hydrate::shallow_clone(remote, git_ref, &clone_dir.clone().into())
+        .expect("shallow clone failed");
 
     let mut conn = pool.acquire().await.unwrap();
 
@@ -91,5 +101,17 @@ async fn hydrate_chain_registry(
             Ok(_) => {}
             Err(err) => println!("Failed to save testnet chain {:?}: {:?}", chain, err),
         }
+    }
+
+    if keep_clone {
+        return;
+    }
+
+    let path = Path::new(clone_dir.as_str());
+    match std::fs::remove_dir_all(path) {
+        Ok(_) => {
+            println!("Removed clone dir {}", clone_dir)
+        }
+        Err(err) => println!("Failed to remove clone dir: {:?}", err),
     }
 }

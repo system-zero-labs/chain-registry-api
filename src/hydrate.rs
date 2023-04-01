@@ -10,7 +10,7 @@ pub struct ChainDirs {
 pub fn shallow_clone(
     remote: String,
     git_ref: String,
-    clone_dir: PathBuf,
+    clone_dir: &PathBuf,
 ) -> anyhow::Result<ChainDirs> {
     let mut cmd = std::process::Command::new("git");
     cmd.arg("clone")
@@ -108,7 +108,7 @@ mod tests {
         let chains = shallow_clone(
             "https://github.com/cosmos/chain-registry".to_string(),
             "master".to_string(),
-            temp_dir.path().to_path_buf(),
+            &temp_dir.path().to_path_buf(),
         )
         .unwrap();
 
