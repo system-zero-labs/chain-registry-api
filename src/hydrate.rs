@@ -46,7 +46,7 @@ fn collect_chains(dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
         })
         .filter(|f| {
             let fname = f.file_name().unwrap().to_str().unwrap();
-            !(fname.starts_with("_") || fname.starts_with("testnets"))
+            !(fname.starts_with("_") || fname.starts_with(".") || fname.starts_with("testnets"))
         })
         .collect();
     Ok(found)
@@ -130,6 +130,8 @@ mod tests {
         );
         assert!(mainnets.contains(&"osmosis".to_string()), "{:?}", mainnets);
         assert!(!mainnets.contains(&".".to_string()), "{:?}", mainnets);
+        assert!(!mainnets.contains(&".git".to_string()), "{:?}", mainnets);
+        assert!(!mainnets.contains(&".github".to_string()), "{:?}", mainnets);
         assert!(
             !mainnets.contains(&"testnets".to_string()),
             "{:?}",
