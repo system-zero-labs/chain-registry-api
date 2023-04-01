@@ -40,7 +40,8 @@ enum Sub {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Args::parse();
 
     match cli.sub {
@@ -49,13 +50,20 @@ fn main() {
             git_remote,
             git_ref,
             path,
-        } => hydrate_chain_registry(git_remote, git_ref, path),
+        } => hydrate_chain_registry(git_remote, git_ref, path).await,
     }
 }
 
-fn hydrate_chain_registry(remote: String, git_ref: String, path: Option<String>) {
+async fn hydrate_chain_registry(remote: String, git_ref: String, path: Option<String>) {
     let clone_dir =
         path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
     println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
-    hydrate::shallow_clone(remote, git_ref, clone_dir.into()).expect("shallow clone failed");
+    let chains =
+        hydrate::shallow_clone(remote, git_ref, clone_dir.into()).expect("shallow clone failed");
+    for chain in chains.mainnets {
+        match hydrate::save_chain(todo, chain.to_path_buf(), "mainnet".to_string()).await {
+            Ok(_) => {}
+            Err(err) => println!("Failed to save mainnet chain {:?}: {:?}", chain, err),
+        }
+    }
 }

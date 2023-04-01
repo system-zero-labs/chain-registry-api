@@ -3,8 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 
 pub struct ChainDirs {
-    mainnets: Vec<PathBuf>,
-    testnets: Vec<PathBuf>,
+    pub mainnets: Vec<PathBuf>,
+    pub testnets: Vec<PathBuf>,
 }
 
 pub fn shallow_clone(
