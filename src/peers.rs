@@ -12,7 +12,7 @@ struct RawPeer {
 pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
     chain_id: i64,
-    peer_type: String,
+    peer_type: String, // TODO: should be an enum
     live_check: F,
 ) -> anyhow::Result<()> {
     anyhow::bail!("Not implemented");

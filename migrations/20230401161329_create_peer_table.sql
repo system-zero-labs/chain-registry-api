@@ -1,6 +1,6 @@
 CREATE TABLE peer
 (
-    id          SERIAL PRIMARY KEY,
+    id          BIGSERIAL PRIMARY KEY,
     type        TEXT        NOT NULL, -- 'seed' or 'persistent'
     address     TEXT        NOT NULL,
     provider    TEXT        NOT NULL DEFAULT 'unknown',

@@ -56,7 +56,7 @@ pub async fn insert_chain(
     conn: &mut PoolConnection<sqlx::Postgres>,
     path: PathBuf,
     network: String,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<i64> {
     let chain_name = path.file_name().unwrap().to_str().unwrap();
     let chain_json = match fs::read_to_string(path.join("chain.json")) {
         Ok(c) => c,
@@ -73,16 +73,17 @@ pub async fn insert_chain(
         r#"
         INSERT INTO chain (name, network, chain_data, asset_data)
         VALUES ($1, $2, $3, $4)
+        RETURNING id
         "#,
         chain_name,
         network,
         sqlx::types::JsonValue::String(chain_json),
         sqlx::types::JsonValue::String(assets_json),
     )
-    .execute(conn)
+    .fetch_one(conn)
     .await
     {
-        Ok(_) => Ok(()),
+        Ok(row) => Ok(row.id),
         Err(err) => anyhow::bail!(
             "failed to insert chain {} {}: {:?}",
             chain_name,
@@ -167,9 +168,11 @@ mod tests {
 
         let mut conn = pool.acquire().await?;
 
-        insert_chain(&mut conn, test_path.clone(), "testnet".to_string())
+        let id = insert_chain(&mut conn, test_path.clone(), "testnet".to_string())
             .await
             .unwrap();
+
+        assert_ne!(id, 0);
 
         let chain = sqlx::query!("SELECT * FROM chain")
             .fetch_one(&mut conn)

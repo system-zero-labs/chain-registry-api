@@ -1,6 +1,6 @@
 CREATE TABLE chain
 (
-    id         SERIAL PRIMARY KEY,
+    id         BIGSERIAL PRIMARY KEY,
     name       TEXT       NOT NULL,
     network    TEXT       NOT NULL,
     chain_data jsonb      NOT NULL,
