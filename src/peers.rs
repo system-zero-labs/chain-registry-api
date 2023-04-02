@@ -2,32 +2,82 @@ use serde::{Deserialize, Serialize};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct RawPeer {
-    chain_id: i64, // foreign key
-    node_id: String,
-    address: String,
+    node_id: Option<String>,
+    address: Option<String>,
     provider: Option<String>,
-    peer_type: String, // TODO: should be enum, only 'persistent' and 'seed' are valid
+}
+
+pub enum PeerType {
+    Seed,
+    Persistent,
+}
+
+impl PeerType {
+    fn as_field(&self) -> &str {
+        match self {
+            PeerType::Seed => "seeds",
+            PeerType::Persistent => "persistent_peers",
+        }
+    }
+
+    fn as_str(&self) -> &str {
+        match self {
+            PeerType::Seed => "seed",
+            PeerType::Persistent => "persistent",
+        }
+    }
+}
+
+pub async fn find_peers(
+    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+    chain_id: i64,
+    peer_type: PeerType,
+) -> anyhow::Result<Vec<RawPeer>> {
+    match sqlx::query_as!(
+        RawPeer,
+        r#"
+        select 
+        jsonb_array_elements(chain_data->'peers'->$1)->>'id' as node_id, 
+        jsonb_array_elements(chain_data->'peers'->$1)->>'address' as address, 
+        jsonb_array_elements(chain_data->'peers'->$1)->>'provider' as provider 
+        from chain where id = $2
+        "#,
+        peer_type.as_field(),
+        chain_id,
+    )
+    .fetch_all(conn)
+    .await
+    {
+        Ok(peers) => Ok(peers),
+        Err(err) => anyhow::bail!("failed to find {} peers: {:?}", peer_type.as_field(), err),
+    }
 }
 
 pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+    chain_id: i64,
+    peer_type: PeerType,
     peer: RawPeer,
     live_check: F,
 ) -> anyhow::Result<()> {
-    let is_alive = live_check(peer.address.as_ref()).is_ok();
-    let address = format!("{}@{}", peer.node_id, peer.address);
+    let (node_id, address) = match (peer.node_id, peer.address) {
+        (Some(node_id), Some(address)) => (node_id, address),
+        _ => anyhow::bail!("peer is missing node_id or address"),
+    };
+    let is_alive = live_check(address.as_ref()).is_ok();
+    let address = format!("{}@{}", node_id, address);
 
     match sqlx::query!(
         r#"
         INSERT INTO peer (chain_id_fk, address, provider, type, is_alive)
         VALUES ($1, $2, $3, $4, $5)
         "#,
-        peer.chain_id,
+        chain_id,
         address,
         peer.provider.unwrap_or("unknown".to_string()),
-        peer.peer_type,
+        peer_type.as_str(),
         is_alive,
     )
     .execute(conn)
@@ -84,20 +134,46 @@ mod tests {
     }
 
     #[sqlx::test(fixtures("chains"))]
+    async fn test_find_peers(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+
+        let seeds = find_peers(&mut conn, 1, PeerType::Seed).await.unwrap();
+
+        assert_eq!(seeds.len(), 7);
+
+        for seed in seeds {
+            assert!(seed.node_id.is_some());
+            assert!(seed.address.is_some());
+            assert!(seed.provider.is_some());
+        }
+
+        let peers = find_peers(&mut conn, 1, PeerType::Persistent)
+            .await
+            .unwrap();
+
+        assert_eq!(peers.len(), 3);
+
+        for peer in peers {
+            assert!(peer.node_id.is_some());
+            assert!(peer.address.is_some());
+        }
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("chains"))]
     async fn test_insert_persistent_peer(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
         let stub_liveness = |_: &str| -> anyhow::Result<()> { Ok(()) };
 
         let peer = RawPeer {
-            chain_id: 1,
-            node_id: "abc123".to_string(),
-            peer_type: "persistent".to_string(),
-            address: "127.0.0.1:3346".to_string(),
+            node_id: Some("abc123".to_string()),
+            address: Some("127.0.0.1:3346".to_string()),
             provider: None,
         };
 
-        assert_ok!(insert_peer(&mut conn, peer, stub_liveness).await);
+        assert_ok!(insert_peer(&mut conn, 1, PeerType::Persistent, peer, stub_liveness).await);
 
         let inserted = sqlx::query!(
             r#"
