@@ -94,7 +94,7 @@ pub async fn insert_chain(
 
 #[cfg(test)]
 mod tests {
-    use crate::hydrate::{insert_chain, shallow_clone};
+    use super::{insert_chain, shallow_clone};
     use sqlx::PgPool;
     use std::fs;
     use std::fs::File;
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn test_save_chain(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_insert_chain(pool: PgPool) -> sqlx::Result<()> {
         let test_path = TempDir::new().unwrap().into_path().join("cosmos");
         fs::create_dir(test_path.clone()).unwrap();
         let mut file = File::create(test_path.clone().join("chain.json"))?;
