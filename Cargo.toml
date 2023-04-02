@@ -12,6 +12,7 @@ description = "An API for the Cosmos Chain Registry (https://github.com/DavidNix
 anyhow = { version = "1.0.70", features = ["backtrace"] }
 clap = { version = "4.1.11", features = ["derive", "env"] }
 serde = { version = "1.0.159", features = ["derive"] }
+serde_json = "1.0.95"
 sqlx = { version = "0.6.3", features = ["macros", "migrate", "runtime-tokio-rustls", "postgres", "chrono", "json"] }
 tempfile = "3.4.0"
 tokio = { version = "1.27.0", features = ["full"] }

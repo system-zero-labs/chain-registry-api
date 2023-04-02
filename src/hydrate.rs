@@ -67,7 +67,10 @@ pub async fn insert_chain(
             err,
         ),
     };
+    let chain_json: serde_json::Value = serde_json::from_str(&chain_json)?;
+
     let assets_json = fs::read_to_string(path.join("assetlist.json")).unwrap_or("{}".to_string());
+    let assets_json: serde_json::Value = serde_json::from_str(&assets_json)?;
 
     match sqlx::query!(
         r#"
@@ -77,8 +80,8 @@ pub async fn insert_chain(
         "#,
         chain_name,
         network,
-        sqlx::types::JsonValue::String(chain_json),
-        sqlx::types::JsonValue::String(assets_json),
+        chain_json,
+        assets_json,
     )
     .fetch_one(conn)
     .await
