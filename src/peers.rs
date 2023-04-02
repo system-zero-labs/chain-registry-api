@@ -3,19 +3,39 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct RawPeer {
+pub struct RawPeer {
+    chain_id: i64, // foreign key
     node_id: String,
     address: String,
     provider: Option<String>,
+    peer_type: String, // TODO: should be enum, only 'persistent' and 'seed' are valid
 }
 
 pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
-    chain_id: i64,
-    peer_type: String, // TODO: should be an enum
+    peer: RawPeer,
     live_check: F,
 ) -> anyhow::Result<()> {
-    anyhow::bail!("Not implemented");
+    let is_alive = live_check(peer.address.as_ref()).is_ok();
+    let address = format!("{}@{}", peer.node_id, peer.address);
+
+    match sqlx::query!(
+        r#"
+        INSERT INTO peer (chain_id_fk, address, provider, type, is_alive)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        peer.chain_id,
+        address,
+        peer.provider.unwrap_or("unknown".to_string()),
+        peer.peer_type,
+        is_alive,
+    )
+    .execute(conn)
+    .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => anyhow::bail!("failed to insert peer: {:?}", err),
+    }
 }
 
 pub fn tcp_check_liveness(addr: &str, timeout: Duration) -> anyhow::Result<()> {
@@ -42,7 +62,7 @@ pub fn tcp_check_liveness(addr: &str, timeout: Duration) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{insert_peer, tcp_check_liveness};
+    use super::*;
     use sqlx::PgPool;
     use std::time::Duration;
     use tokio_test::*;
@@ -67,8 +87,33 @@ mod tests {
     async fn test_insert_persistent_peer(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        // insert_persistent_peer(&mut conn, 1).await.unwrap();
-        panic!("TODO");
+        let stub_liveness = |_: &str| -> anyhow::Result<()> { Ok(()) };
+
+        let peer = RawPeer {
+            chain_id: 1,
+            node_id: "abc123".to_string(),
+            peer_type: "persistent".to_string(),
+            address: "127.0.0.1:3346".to_string(),
+            provider: None,
+        };
+
+        assert_ok!(insert_peer(&mut conn, peer, stub_liveness).await);
+
+        let inserted = sqlx::query!(
+            r#"
+            SELECT * FROM peer
+            WHERE chain_id_fk = 1
+            LIMIT 1
+            "#,
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert_eq!(inserted.address, "abc123@127.0.0.1:3346");
+        assert_eq!(inserted.chain_id_fk, 1);
+        assert_eq!(inserted.provider, "unknown");
+        assert_eq!(inserted.r#type, "persistent");
+        assert!(inserted.is_alive);
 
         Ok(())
     }

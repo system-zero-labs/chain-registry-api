@@ -5,6 +5,6 @@ CREATE TABLE peer
     address     TEXT        NOT NULL,
     provider    TEXT        NOT NULL DEFAULT 'unknown',
     is_alive    BOOLEAN     NOT NULL,
-    chain_id_fk INTEGER     NOT NULL REFERENCES chain (id) ON DELETE CASCADE,
+    chain_id_fk BIGINT      NOT NULL REFERENCES chain (id) ON DELETE CASCADE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
