@@ -18,9 +18,8 @@ pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
     anyhow::bail!("Not implemented");
 }
 
-pub fn tcp_check_liveness(addr: &str) -> anyhow::Result<()> {
+pub fn tcp_check_liveness(addr: &str, timeout: Duration) -> anyhow::Result<()> {
     let socket_addrs = addr.to_socket_addrs()?;
-    let timeout = Duration::from_secs(5);
     let mut last_error = None;
 
     for socket_addr in socket_addrs {
@@ -45,20 +44,23 @@ pub fn tcp_check_liveness(addr: &str) -> anyhow::Result<()> {
 mod tests {
     use super::{insert_peer, tcp_check_liveness};
     use sqlx::PgPool;
+    use std::time::Duration;
     use tokio_test::*;
 
     #[test]
     fn test_tcp_check_liveness() {
-        assert_err!(tcp_check_liveness("127.0.0.1:433"));
+        let timeout = Duration::from_secs(3);
+
+        assert_err!(tcp_check_liveness("127.0.0.1:433", timeout));
 
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let local_addr = listener.local_addr().unwrap();
         let addr = format!("127.0.0.1:{}", local_addr.port());
 
-        assert_ok!(tcp_check_liveness(addr.as_ref()));
+        assert_ok!(tcp_check_liveness(addr.as_ref(), timeout));
 
         // Testing domain names
-        assert_ok!(tcp_check_liveness("google.com:80"));
+        assert_ok!(tcp_check_liveness("google.com:80", timeout));
     }
 
     #[sqlx::test(fixtures("chains"))]
