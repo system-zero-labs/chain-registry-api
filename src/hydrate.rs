@@ -165,9 +165,10 @@ mod tests {
         let test_path = TempDir::new().unwrap().into_path().join("cosmos");
         fs::create_dir(test_path.clone()).unwrap();
         let mut file = File::create(test_path.clone().join("chain.json"))?;
-        file.write_all(b"stub chain data")?;
+        file.write_all(r#"{"chain_id":"cosmoshub-4"}"#.as_bytes())?;
         let mut file = File::create(test_path.clone().join("assetlist.json"))?;
-        file.write_all(b"stub asset data")?;
+        let stub_asset_data = r#"{"stub":"data"}"#;
+        file.write_all(stub_asset_data.as_bytes())?;
 
         let mut conn = pool.acquire().await?;
 
@@ -182,8 +183,16 @@ mod tests {
             .await?;
         assert_eq!(chain.name, "cosmos");
         assert_eq!(chain.network, "testnet");
-        assert_eq!(chain.chain_data, "stub chain data");
-        assert_eq!(chain.asset_data, "stub asset data");
+        assert_eq!(chain.asset_data.to_string(), stub_asset_data);
+
+        let chain = sqlx::query!(
+            "SELECT chain_data->>'chain_id' as chain_id FROM chain WHERE id = $1",
+            id
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert_eq!(chain.chain_id.unwrap(), "cosmoshub-4");
 
         Ok(())
     }
