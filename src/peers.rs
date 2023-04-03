@@ -6,7 +6,6 @@ use std::time::Duration;
 pub struct RawPeer {
     node_id: Option<String>,
     address: Option<String>,
-    provider: Option<String>,
 }
 
 pub enum PeerType {
@@ -40,8 +39,7 @@ pub async fn find_peers(
         r#"
         select 
         jsonb_array_elements(chain_data->'peers'->$1)->>'id' as node_id, 
-        jsonb_array_elements(chain_data->'peers'->$1)->>'address' as address, 
-        jsonb_array_elements(chain_data->'peers'->$1)->>'provider' as provider 
+        jsonb_array_elements(chain_data->'peers'->$1)->>'address' as address
         from chain where id = $2
         "#,
         peer_type.as_field(),
@@ -71,13 +69,12 @@ pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
 
     match sqlx::query!(
         r#"
-        INSERT INTO peer (chain_id_fk, address, provider, type, is_alive)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = $5
+        INSERT INTO peer (chain_id_fk, address, type, is_alive)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = $4
         "#,
         chain_id,
         address,
-        peer.provider.unwrap_or("unknown".to_string()),
         peer_type.as_str(),
         is_alive,
     )
@@ -145,7 +142,6 @@ mod tests {
         for seed in seeds {
             assert!(seed.node_id.is_some());
             assert!(seed.address.is_some());
-            assert!(seed.provider.is_some());
         }
 
         let peers = find_peers(&mut conn, 1, PeerType::Persistent)
@@ -171,7 +167,6 @@ mod tests {
         let peer = RawPeer {
             node_id: Some("abc123".to_string()),
             address: Some("127.0.0.1:3346".to_string()),
-            provider: None,
         };
 
         assert_ok!(
