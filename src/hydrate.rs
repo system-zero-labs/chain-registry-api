@@ -2,7 +2,7 @@ use sqlx::pool::PoolConnection;
 use std::fs;
 use std::path::PathBuf;
 
-pub struct ChainDirs {
+pub struct ChainRegRepo {
     pub mainnets: Vec<PathBuf>,
     pub testnets: Vec<PathBuf>,
 }
@@ -11,7 +11,7 @@ pub fn shallow_clone(
     remote: String,
     git_ref: String,
     clone_dir: &PathBuf,
-) -> anyhow::Result<ChainDirs> {
+) -> anyhow::Result<ChainRegRepo> {
     let mut cmd = std::process::Command::new("git");
     cmd.arg("clone")
         .arg("--depth")
@@ -32,7 +32,7 @@ pub fn shallow_clone(
 
     let mainnets = collect_chains(clone_dir.clone())?;
     let testnets = collect_chains(clone_dir.join("testnets"))?;
-    Ok(ChainDirs { mainnets, testnets })
+    Ok(ChainRegRepo { mainnets, testnets })
 }
 
 fn collect_chains(dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
