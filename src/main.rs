@@ -1,7 +1,10 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
+use std::time::Duration;
+
 mod hydrate;
 mod peers;
+use crate::peers::find_peers;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tempfile::TempDir;
 
@@ -91,6 +94,12 @@ async fn hydrate_chain_registry(
 
     let mut conn = pool.acquire().await.unwrap();
 
+    // chain ids mutable array of i64
+    let mut chain_ids: Vec<i64> = Vec::new();
+
+    println!("Inserting chains...");
+
+    // Insert mainnet chains
     for chain in repo.mainnets {
         match hydrate::insert_chain(
             &mut conn,
@@ -100,11 +109,14 @@ async fn hydrate_chain_registry(
         )
         .await
         {
-            Ok(_) => {}
+            Ok(id) => {
+                chain_ids.push(id);
+            }
             Err(err) => println!("Failed to save mainnet chain {:?}: {:?}", chain, err),
         }
     }
 
+    // Insert testnet chains
     for chain in repo.testnets {
         match hydrate::insert_chain(
             &mut conn,
@@ -114,9 +126,17 @@ async fn hydrate_chain_registry(
         )
         .await
         {
-            Ok(_) => {}
+            Ok(id) => {
+                chain_ids.push(id);
+            }
             Err(err) => println!("Failed to save testnet chain {:?}: {:?}", chain, err),
         }
+    }
+
+    // Insert peers
+    println!("Inserting peers...");
+    for chain_id in chain_ids {
+        insert_peer(&mut conn, chain_id).await;
     }
 
     if keep_clone {
@@ -129,5 +149,37 @@ async fn hydrate_chain_registry(
             println!("Removed clone dir {}", clone_dir)
         }
         Err(err) => println!("Failed to remove clone dir: {:?}", err),
+    }
+}
+
+async fn insert_peer(conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>, chain_id: i64) {
+    for peer_type in [peers::PeerType::Seed, peers::PeerType::Persistent].into_iter() {
+        let peers = match find_peers(conn, chain_id, peer_type.clone()).await {
+            Ok(peers) => peers,
+            Err(err) => {
+                println!("Failed to find peers {:?}: {:?}", peer_type, err);
+                continue;
+            }
+        };
+
+        let check_liveness = |addr: &str| -> anyhow::Result<()> {
+            println!("Checking liveness of {}", addr);
+            peers::tcp_check_liveness(addr, Duration::from_secs(5))
+        };
+
+        for peer in peers {
+            match peers::insert_peer(
+                conn,
+                chain_id,
+                peer_type.clone(),
+                peer.clone(),
+                check_liveness,
+            )
+            .await
+            {
+                Ok(_) => {}
+                Err(err) => println!("Failed to insert peer {:?}: {:?}", peer, err),
+            }
+        }
     }
 }

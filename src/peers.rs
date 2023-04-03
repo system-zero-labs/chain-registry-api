@@ -8,6 +8,7 @@ pub struct RawPeer {
     address: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub enum PeerType {
     Seed,
     Persistent,
