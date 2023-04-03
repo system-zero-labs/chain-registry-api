@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 pub struct ChainRegRepo {
+    pub commit: String,
     pub mainnets: Vec<PathBuf>,
     pub testnets: Vec<PathBuf>,
 }
@@ -32,7 +33,26 @@ pub fn shallow_clone(
 
     let mainnets = collect_chains(clone_dir.clone())?;
     let testnets = collect_chains(clone_dir.join("testnets"))?;
-    Ok(ChainRegRepo { mainnets, testnets })
+
+    // Get commit hash
+    let mut cmd = std::process::Command::new("git");
+    let output = cmd.arg("rev-parse").arg("HEAD").output()?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "git rev-parse failed with status: {:?} stderr: {:?} stdout: {:?}",
+            output.status,
+            std::str::from_utf8(output.stderr.as_ref()).unwrap_or("cannot read stderr"),
+            std::str::from_utf8(output.stdout.as_ref()).unwrap_or("cannot read stdout")
+        );
+    }
+    let commit = std::str::from_utf8(output.stdout.as_ref())?;
+    let commit = commit.to_string();
+
+    Ok(ChainRegRepo {
+        commit,
+        mainnets,
+        testnets,
+    })
 }
 
 fn collect_chains(dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
@@ -109,19 +129,21 @@ mod tests {
     fn test_shallow_clone() {
         let temp_dir = TempDir::new().unwrap();
 
-        let chains = shallow_clone(
+        let repo = shallow_clone(
             "https://github.com/cosmos/chain-registry".to_string(),
             "master".to_string(),
             &temp_dir.path().to_path_buf(),
         )
         .unwrap();
 
+        assert!(!repo.commit.is_empty());
+
         assert!(temp_dir.path().join("cosmoshub/chain.json").exists());
 
-        assert!(chains.mainnets.len() > 1);
-        assert!(chains.mainnets.iter().all(|p| p.exists() && p.is_dir()));
+        assert!(repo.mainnets.len() > 1);
+        assert!(repo.mainnets.iter().all(|p| p.exists() && p.is_dir()));
 
-        let mainnets: Vec<String> = chains
+        let mainnets: Vec<String> = repo
             .mainnets
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
@@ -142,10 +164,10 @@ mod tests {
             mainnets
         );
 
-        assert!(chains.testnets.len() > 1);
-        assert!(chains.testnets.iter().all(|p| p.exists() && p.is_dir()));
+        assert!(repo.testnets.len() > 1);
+        assert!(repo.testnets.iter().all(|p| p.exists() && p.is_dir()));
 
-        let testnets: Vec<String> = chains
+        let testnets: Vec<String> = repo
             .testnets
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
