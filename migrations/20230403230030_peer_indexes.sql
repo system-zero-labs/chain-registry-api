@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX peer_chain_id_fk_address_type_idx ON peer (chain_id_fk, address, type);

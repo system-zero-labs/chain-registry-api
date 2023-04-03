@@ -73,6 +73,7 @@ pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
         r#"
         INSERT INTO peer (chain_id_fk, address, provider, type, is_alive)
         VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = $5
         "#,
         chain_id,
         address,
@@ -173,7 +174,16 @@ mod tests {
             provider: None,
         };
 
-        assert_ok!(insert_peer(&mut conn, 1, PeerType::Persistent, peer, stub_liveness).await);
+        assert_ok!(
+            insert_peer(
+                &mut conn,
+                1,
+                PeerType::Persistent,
+                peer.clone(),
+                stub_liveness
+            )
+            .await
+        );
 
         let inserted = sqlx::query!(
             r#"
@@ -190,6 +200,26 @@ mod tests {
         assert_eq!(inserted.provider, "unknown");
         assert_eq!(inserted.r#type, "persistent");
         assert!(inserted.is_alive);
+
+        let stub_liveness = |_: &str| -> anyhow::Result<()> { anyhow::bail!("boom") };
+        assert_ok!(insert_peer(&mut conn, 1, PeerType::Persistent, peer, stub_liveness).await);
+
+        let updated = sqlx::query!(
+            r#"
+            SELECT * FROM peer
+            WHERE chain_id_fk = 1
+            LIMIT 1
+            "#,
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert_eq!(inserted.id, updated.id);
+        assert_eq!(inserted.address, updated.address);
+        assert_eq!(inserted.chain_id_fk, updated.chain_id_fk);
+        assert_eq!(inserted.provider, updated.provider);
+
+        assert!(!updated.is_alive);
 
         Ok(())
     }
