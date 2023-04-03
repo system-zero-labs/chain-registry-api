@@ -76,6 +76,7 @@ pub async fn insert_chain(
     conn: &mut PoolConnection<sqlx::Postgres>,
     path: PathBuf,
     network: String,
+    commit: &String,
 ) -> anyhow::Result<i64> {
     let chain_name = path.file_name().unwrap().to_str().unwrap();
     let chain_json = match fs::read_to_string(path.join("chain.json")) {
@@ -94,14 +95,16 @@ pub async fn insert_chain(
 
     match sqlx::query!(
         r#"
-        INSERT INTO chain (name, network, chain_data, asset_data)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO chain (name, network, chain_data, asset_data, commit)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (name, network, commit) DO NOTHING
         RETURNING id
         "#,
         chain_name,
         network,
         chain_json,
         assets_json,
+        commit,
     )
     .fetch_one(conn)
     .await
@@ -194,9 +197,14 @@ mod tests {
 
         let mut conn = pool.acquire().await?;
 
-        let id = insert_chain(&mut conn, test_path.clone(), "testnet".to_string())
-            .await
-            .unwrap();
+        let id = insert_chain(
+            &mut conn,
+            test_path.clone(),
+            "testnet".to_string(),
+            &"stub commit".to_string(),
+        )
+        .await
+        .unwrap();
 
         assert_ne!(id, 0);
 
@@ -206,7 +214,9 @@ mod tests {
         assert_eq!(chain.name, "cosmos");
         assert_eq!(chain.network, "testnet");
         assert_eq!(chain.asset_data.to_string(), stub_asset_data);
+        assert_eq!(chain.commit, "stub commit");
 
+        // Ensure we saving JSON objects
         let chain = sqlx::query!(
             "SELECT chain_data->>'chain_id' as chain_id FROM chain WHERE id = $1",
             id

@@ -86,19 +86,34 @@ async fn hydrate_chain_registry(
     let clone_dir =
         path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
     println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
-    let chains = hydrate::shallow_clone(remote, git_ref, &clone_dir.clone().into())
+    let repo = hydrate::shallow_clone(remote, git_ref, &clone_dir.clone().into())
         .expect("shallow clone failed");
 
     let mut conn = pool.acquire().await.unwrap();
 
-    for chain in chains.mainnets {
-        match hydrate::insert_chain(&mut conn, chain.to_path_buf(), "mainnet".to_string()).await {
+    for chain in repo.mainnets {
+        match hydrate::insert_chain(
+            &mut conn,
+            chain.to_path_buf(),
+            "mainnet".to_string(),
+            &repo.commit,
+        )
+        .await
+        {
             Ok(_) => {}
             Err(err) => println!("Failed to save mainnet chain {:?}: {:?}", chain, err),
         }
     }
-    for chain in chains.testnets {
-        match hydrate::insert_chain(&mut conn, chain.to_path_buf(), "testnet".to_string()).await {
+
+    for chain in repo.testnets {
+        match hydrate::insert_chain(
+            &mut conn,
+            chain.to_path_buf(),
+            "testnet".to_string(),
+            &repo.commit,
+        )
+        .await
+        {
             Ok(_) => {}
             Err(err) => println!("Failed to save testnet chain {:?}: {:?}", chain, err),
         }
