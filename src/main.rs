@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 mod hydrate;
@@ -58,7 +59,8 @@ async fn main() {
     let cli = Args::parse();
 
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(10)
+        .acquire_timeout(Duration::from_secs(120))
         .connect(std::env::var("DATABASE_URL").unwrap().as_str())
         .await
         .expect("Failed to connect to database");
@@ -134,14 +136,14 @@ async fn hydrate_chain_registry(
     }
 
     // Insert peers
-    let pool = &pool;
+    let pool = Arc::new(pool);
     let mut handles = vec![];
 
     println!("Inserting peers...");
     for chain_id in chain_ids {
-        // insert_peer(&pool, chain_id).await;
+        let clone = Arc::clone(&pool);
         handles.push(tokio::spawn(async move {
-            insert_peer(pool, chain_id).await;
+            insert_peer(clone, chain_id).await;
         }));
     }
 
@@ -158,11 +160,14 @@ async fn hydrate_chain_registry(
     }
 
     for handle in handles {
-        handle.await.unwrap(); // TODO fix
+        match handle.await {
+            Ok(_) => {}
+            Err(err) => println!("Task failed: {:?}", err),
+        }
     }
 }
 
-async fn insert_peer(pool: &PgPool, chain_id: i64) {
+async fn insert_peer(pool: Arc<PgPool>, chain_id: i64) {
     let mut conn = match pool.acquire().await {
         Ok(conn) => conn,
         Err(err) => {
