@@ -193,7 +193,6 @@ mod tests {
 
         assert_eq!(inserted.address, "abc123@127.0.0.1:3346");
         assert_eq!(inserted.chain_id_fk, 1);
-        assert_eq!(inserted.provider, "unknown");
         assert_eq!(inserted.r#type, "persistent");
         assert!(inserted.is_alive);
 
@@ -213,7 +212,6 @@ mod tests {
         assert_eq!(inserted.id, updated.id);
         assert_eq!(inserted.address, updated.address);
         assert_eq!(inserted.chain_id_fk, updated.chain_id_fk);
-        assert_eq!(inserted.provider, updated.provider);
 
         assert!(!updated.is_alive);
 
