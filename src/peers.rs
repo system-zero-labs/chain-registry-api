@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
