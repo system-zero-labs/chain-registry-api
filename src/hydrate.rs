@@ -93,11 +93,13 @@ pub async fn insert_chain(
     let assets_json = fs::read_to_string(path.join("assetlist.json")).unwrap_or("{}".to_string());
     let assets_json: serde_json::Value = serde_json::from_str(&assets_json)?;
 
+    // DO NOTHING causes a RowNotFound error. We want the updated_at triggers to fire as well, so
+    // we update.
     match sqlx::query!(
         r#"
         INSERT INTO chain (name, network, chain_data, asset_data, commit)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (name, network, commit) DO NOTHING
+        ON CONFLICT (name, network, commit) DO UPDATE SET commit = $5
         RETURNING id
         "#,
         chain_name,
@@ -225,6 +227,23 @@ mod tests {
         .await?;
 
         assert_eq!(chain.chain_id.unwrap(), "cosmoshub-4");
+
+        // Ensure we don't insert duplicate chains
+        insert_chain(
+            &mut conn,
+            test_path.clone(),
+            "testnet".to_string(),
+            &"stub commit".to_string(),
+        )
+        .await
+        .unwrap();
+
+        let count = sqlx::query!("SELECT count(*) FROM chain")
+            .fetch_one(&mut conn)
+            .await?
+            .count
+            .unwrap();
+        assert_eq!(count, 1);
 
         Ok(())
     }
