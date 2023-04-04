@@ -58,7 +58,7 @@ async fn main() {
     let cli = Args::parse();
 
     let pool = PgPoolOptions::new()
-        .max_connections(2)
+        .max_connections(5)
         .connect(std::env::var("DATABASE_URL").unwrap().as_str())
         .await
         .expect("Failed to connect to database");
@@ -134,9 +134,15 @@ async fn hydrate_chain_registry(
     }
 
     // Insert peers
+    let pool = &pool;
+    let mut handles = vec![];
+
     println!("Inserting peers...");
     for chain_id in chain_ids {
-        insert_peer(&mut conn, chain_id).await;
+        // insert_peer(&pool, chain_id).await;
+        handles.push(tokio::spawn(async move {
+            insert_peer(pool, chain_id).await;
+        }));
     }
 
     if keep_clone {
@@ -150,11 +156,22 @@ async fn hydrate_chain_registry(
         }
         Err(err) => println!("Failed to remove clone dir: {:?}", err),
     }
+
+    for handle in handles {
+        handle.await.unwrap(); // TODO fix
+    }
 }
 
-async fn insert_peer(conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>, chain_id: i64) {
+async fn insert_peer(pool: &PgPool, chain_id: i64) {
+    let mut conn = match pool.acquire().await {
+        Ok(conn) => conn,
+        Err(err) => {
+            println!("Failed to acquire connection: {:?}", err);
+            return;
+        }
+    };
     for peer_type in [peers::PeerType::Seed, peers::PeerType::Persistent].into_iter() {
-        let peers = match find_peers(conn, chain_id, peer_type.clone()).await {
+        let peers = match find_peers(&mut conn, chain_id, peer_type.clone()).await {
             Ok(peers) => peers,
             Err(err) => {
                 println!("Failed to find peers {:?}: {:?}", peer_type, err);
@@ -169,7 +186,7 @@ async fn insert_peer(conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>, chai
 
         for peer in peers {
             match peers::insert_peer(
-                conn,
+                &mut conn,
                 chain_id,
                 peer_type.clone(),
                 peer.clone(),
