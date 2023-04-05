@@ -54,15 +54,41 @@ enum Sub {
         )]
         keep_clone: bool,
     },
+
+    #[command(about = "Check liveness of peers and rpc/api endpoints")]
+    Liveness {
+        #[arg(
+            short,
+            long,
+            help = "Number of postgres connections",
+            default_value = "10"
+        )]
+        connections: u32,
+    },
 }
 
 #[tokio::main]
 async fn main() {
     let cli = Args::parse();
 
+    match cli.sub {
+        Sub::Serve { port } => println!("Serving on port {}", port),
+        Sub::Hydrate {
+            git_remote,
+            git_ref,
+            path,
+            keep_clone,
+        } => hydrate_chain_registry(git_remote, git_ref, path, keep_clone).await,
+        Sub::Liveness { connections } => {
+            println!("TODO")
+        }
+    }
+}
+
+async fn connect_pool(max_conns: u32, timeout: Duration) -> PgPool {
     let pool = PgPoolOptions::new()
-        .max_connections(10)
-        .acquire_timeout(Duration::from_secs(120))
+        .max_connections(max_conns)
+        .acquire_timeout(timeout)
         .connect(std::env::var("DATABASE_URL").unwrap().as_str())
         .await
         .expect("Failed to connect to database");
@@ -72,24 +98,17 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
-    match cli.sub {
-        Sub::Serve { port } => println!("Serving on port {}", port),
-        Sub::Hydrate {
-            git_remote,
-            git_ref,
-            path,
-            keep_clone,
-        } => hydrate_chain_registry(pool, git_remote, git_ref, path, keep_clone).await,
-    }
+    pool
 }
 
 async fn hydrate_chain_registry(
-    pool: PgPool,
     remote: String,
     git_ref: String,
     path: Option<String>,
     keep_clone: bool,
 ) {
+    let pool = connect_pool(2, Duration::from_secs(30)).await;
+
     let clone_dir =
         path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
     println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
