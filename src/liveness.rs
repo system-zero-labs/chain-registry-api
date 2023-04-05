@@ -2,9 +2,14 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 pub fn tcp_check_liveness(addr: &str, timeout: Duration) -> anyhow::Result<()> {
+    let parts = addr.split('@').collect::<Vec<&str>>();
+    let addr = match parts.last() {
+        Some(a) => a,
+        None => addr,
+    };
+
     let socket_addrs = addr.to_socket_addrs()?;
     let mut last_error = None;
-
     for socket_addr in socket_addrs {
         match TcpStream::connect_timeout(&socket_addr, timeout) {
             Ok(stream) => {
@@ -37,6 +42,10 @@ mod tests {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let local_addr = listener.local_addr().unwrap();
         let addr = format!("127.0.0.1:{}", local_addr.port());
+
+        assert_ok!(tcp_check_liveness(addr.as_ref(), timeout));
+
+        let addr = format!("abcignored@127.0.0.1:{}", local_addr.port());
 
         assert_ok!(tcp_check_liveness(addr.as_ref(), timeout));
 
