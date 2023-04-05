@@ -12,6 +12,12 @@ pub enum PeerType {
     Persistent,
 }
 
+#[derive(Debug, Clone)]
+pub struct Peer {
+    id: i64,
+    address: String,
+}
+
 impl PeerType {
     fn as_field(&self) -> &str {
         match self {
@@ -83,6 +89,26 @@ pub async fn insert_peer(
     }
 }
 
+pub async fn recent_peers(
+    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+) -> anyhow::Result<Vec<Peer>> {
+    match sqlx::query_as!(
+        Peer,
+        r#"
+        WITH recent_chain AS (
+        SELECT commit, max(created_at) as created_at FROM chain GROUP BY commit ORDER BY created_at DESC LIMIT 1
+        )
+        SELECT peer.id, address FROM peer JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)
+        "#,
+    )
+        .fetch_all(conn)
+        .await
+    {
+        Ok(peers) => Ok(peers),
+        Err(err) => anyhow::bail!("failed to find recent peers: {:?}", err),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +167,16 @@ mod tests {
         assert_eq!(inserted.chain_id_fk, 1);
         assert_eq!(inserted.r#type, "persistent");
         assert!(inserted.is_alive);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("recent_peers"))]
+    async fn test_recent_peers(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+        let found = recent_peers(&mut conn).await.unwrap();
+
+        assert_eq!(found.len(), 2);
 
         Ok(())
     }

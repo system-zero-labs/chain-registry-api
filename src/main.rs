@@ -60,10 +60,18 @@ enum Sub {
         #[arg(
             short,
             long,
-            help = "Number of postgres connections",
+            help = "Max number of postgres connections",
             default_value = "10"
         )]
         connections: u32,
+
+        #[arg(
+            short,
+            long,
+            help = "Postgres connection timeout in seconds",
+            default_value = "120"
+        )]
+        timeout_seconds: u32,
     },
 }
 
@@ -79,7 +87,10 @@ async fn main() {
             path,
             keep_clone,
         } => hydrate_chain_registry(git_remote, git_ref, path, keep_clone).await,
-        Sub::Liveness { connections } => {
+        Sub::Liveness {
+            connections,
+            timeout_seconds,
+        } => {
             println!("TODO")
         }
     }
