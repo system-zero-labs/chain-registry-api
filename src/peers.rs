@@ -109,6 +109,27 @@ pub async fn recent_peers(
     }
 }
 
+pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
+    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+    peer: &Peer,
+    check: F,
+) -> anyhow::Result<()> {
+    let alive = check(&peer.address).is_ok();
+    match sqlx::query!(
+        r#"
+        UPDATE peer SET is_alive = $1 WHERE id = $2
+        "#,
+        alive,
+        peer.id,
+    )
+    .execute(conn)
+    .await
+    {
+        Ok(_) => Ok(()),
+        Err(err) => anyhow::bail!("failed to update peer {} liveness: {:?}", peer.address, err),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,6 +198,52 @@ mod tests {
         let found = recent_peers(&mut conn).await.unwrap();
 
         assert_eq!(found.len(), 2);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("recent_peers"))]
+    async fn test_update_liveness(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+
+        let stub_liveness = |addr: &str| -> anyhow::Result<()> {
+            assert_eq!(addr, "stub@address");
+            anyhow::bail!("boom")
+        };
+
+        let peer = Peer {
+            id: 1,
+            address: "stub@address".to_string(),
+        };
+
+        update_liveness(&mut conn, &peer, stub_liveness)
+            .await
+            .unwrap();
+
+        let updated = sqlx::query!(
+            r#"
+            SELECT is_alive FROM peer WHERE id = 1
+            "#,
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert!(!updated.is_alive);
+
+        let stub_liveness = |_: &str| -> anyhow::Result<()> { Ok(()) };
+        update_liveness(&mut conn, &peer, stub_liveness)
+            .await
+            .unwrap();
+
+        let updated = sqlx::query!(
+            r#"
+            SELECT is_alive FROM peer WHERE id = 1
+            "#,
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert!(updated.is_alive);
 
         Ok(())
     }
