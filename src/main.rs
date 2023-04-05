@@ -69,9 +69,9 @@ enum Sub {
             short,
             long,
             help = "Postgres connection timeout in seconds",
-            default_value = "120"
+            default_value = "60"
         )]
-        timeout_seconds: u32,
+        timeout_seconds: u64,
     },
 }
 
@@ -91,7 +91,7 @@ async fn main() {
             connections,
             timeout_seconds,
         } => {
-            println!("TODO")
+            check_liveness(connections, Duration::from_secs(timeout_seconds)).await;
         }
     }
 }
@@ -200,6 +200,51 @@ async fn insert_peer(conn: &mut PoolConnection<sqlx::Postgres>, chain_id: i64) {
                 Ok(_) => {}
                 Err(err) => println!("Failed to insert peer {:?}: {:?}", peer, err),
             }
+        }
+    }
+}
+
+async fn check_liveness(max_conns: u32, timeout: Duration) {
+    let pool = connect_pool(max_conns, timeout).await;
+
+    let mut conn = pool
+        .acquire()
+        .await
+        .expect("Failed to acquire connection from pool");
+
+    let peers = peers::recent_peers(&mut conn)
+        .await
+        .expect("Failed to get recent peers");
+
+    let pool = std::sync::Arc::new(pool);
+    let mut handles = vec![];
+    for peer in peers {
+        let clone = std::sync::Arc::clone(&pool);
+        handles.push(tokio::spawn(async move {
+            let mut conn = match clone.acquire().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    println!("Failed to acquire connection from pool: {:?}", err);
+                    return;
+                }
+            };
+
+            let check_liveness = |addr: &str| -> anyhow::Result<()> {
+                println!("Checking peer liveness for {}", addr);
+                liveness::tcp_check_liveness(addr, Duration::from_secs(5))
+            };
+
+            match peers::update_liveness(&mut conn, &peer, check_liveness).await {
+                Ok(_) => {}
+                Err(err) => println!("Failed to update liveness for {:?}: {:?}", peer, err),
+            }
+        }));
+    }
+
+    for handle in handles {
+        match handle.await {
+            Ok(_) => {}
+            Err(err) => println!("Task failed: {:?}", err),
         }
     }
 }
