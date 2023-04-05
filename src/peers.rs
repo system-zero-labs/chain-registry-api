@@ -1,6 +1,4 @@
 use serde::Deserialize;
-use std::net::{TcpStream, ToSocketAddrs};
-use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawPeer {
@@ -54,30 +52,28 @@ pub async fn find_peers(
     }
 }
 
-pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
+pub async fn insert_peer(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
     chain_id: i64,
     peer_type: PeerType,
     peer: RawPeer,
-    live_check: F,
 ) -> anyhow::Result<()> {
     let (node_id, address) = match (peer.node_id, peer.address) {
         (Some(node_id), Some(address)) => (node_id, address),
         _ => anyhow::bail!("peer is missing node_id or address"),
     };
-    let is_alive = live_check(address.as_ref()).is_ok();
     let address = format!("{}@{}", node_id, address);
 
+    // The bogus DO UPDATE SET ensures we don't get a RowNotFound error.
     match sqlx::query!(
         r#"
-        INSERT INTO peer (chain_id_fk, address, type, is_alive)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = $4
+        INSERT INTO peer (chain_id_fk, address, type)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = peer.is_alive
         "#,
         chain_id,
         address,
         peer_type.as_str(),
-        is_alive,
     )
     .execute(conn)
     .await
@@ -87,50 +83,11 @@ pub async fn insert_peer<F: Fn(&str) -> anyhow::Result<()>>(
     }
 }
 
-pub fn tcp_check_liveness(addr: &str, timeout: Duration) -> anyhow::Result<()> {
-    let socket_addrs = addr.to_socket_addrs()?;
-    let mut last_error = None;
-
-    for socket_addr in socket_addrs {
-        match TcpStream::connect_timeout(&socket_addr, timeout) {
-            Ok(stream) => {
-                stream.shutdown(std::net::Shutdown::Both)?;
-                return Ok(());
-            }
-            Err(e) => {
-                last_error = Some(e);
-            }
-        }
-    }
-
-    Err(last_error.unwrap_or(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "No good addresses",
-    )))?
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use sqlx::PgPool;
-    use std::time::Duration;
     use tokio_test::*;
-
-    #[test]
-    fn test_tcp_check_liveness() {
-        let timeout = Duration::from_secs(3);
-
-        assert_err!(tcp_check_liveness("127.0.0.1:433", timeout));
-
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let local_addr = listener.local_addr().unwrap();
-        let addr = format!("127.0.0.1:{}", local_addr.port());
-
-        assert_ok!(tcp_check_liveness(addr.as_ref(), timeout));
-
-        // Testing domain names
-        assert_ok!(tcp_check_liveness("google.com:80", timeout));
-    }
 
     #[sqlx::test(fixtures("chains"))]
     async fn test_find_peers(pool: PgPool) -> sqlx::Result<()> {
@@ -163,23 +120,12 @@ mod tests {
     async fn test_insert_persistent_peer(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        let stub_liveness = |_: &str| -> anyhow::Result<()> { Ok(()) };
-
         let peer = RawPeer {
             node_id: Some("abc123".to_string()),
             address: Some("127.0.0.1:3346".to_string()),
         };
 
-        assert_ok!(
-            insert_peer(
-                &mut conn,
-                1,
-                PeerType::Persistent,
-                peer.clone(),
-                stub_liveness
-            )
-            .await
-        );
+        assert_ok!(insert_peer(&mut conn, 1, PeerType::Persistent, peer.clone(),).await);
 
         let inserted = sqlx::query!(
             r#"
@@ -195,25 +141,6 @@ mod tests {
         assert_eq!(inserted.chain_id_fk, 1);
         assert_eq!(inserted.r#type, "persistent");
         assert!(inserted.is_alive);
-
-        let stub_liveness = |_: &str| -> anyhow::Result<()> { anyhow::bail!("boom") };
-        assert_ok!(insert_peer(&mut conn, 1, PeerType::Persistent, peer, stub_liveness).await);
-
-        let updated = sqlx::query!(
-            r#"
-            SELECT * FROM peer
-            WHERE chain_id_fk = 1
-            LIMIT 1
-            "#,
-        )
-        .fetch_one(&mut conn)
-        .await?;
-
-        assert_eq!(inserted.id, updated.id);
-        assert_eq!(inserted.address, updated.address);
-        assert_eq!(inserted.chain_id_fk, updated.chain_id_fk);
-
-        assert!(!updated.is_alive);
 
         Ok(())
     }
