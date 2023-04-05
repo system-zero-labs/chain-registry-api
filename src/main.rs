@@ -69,7 +69,7 @@ enum Sub {
             short,
             long,
             help = "Postgres connection timeout in seconds",
-            default_value = "60"
+            default_value = "600"
         )]
         timeout_seconds: u64,
     },
