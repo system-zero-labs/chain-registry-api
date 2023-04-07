@@ -16,6 +16,22 @@ use tempfile::TempDir;
 struct Args {
     #[command(subcommand)]
     sub: Sub,
+
+    #[arg(
+        long,
+        help = "Max number of postgres connections",
+        default_value = "10",
+        global = true
+    )]
+    pg_conns: u32,
+
+    #[arg(
+        long,
+        help = "Postgres connection timeout in seconds",
+        default_value = "600",
+        global = true
+    )]
+    pg_timeout_sec: u64,
 }
 
 #[derive(Subcommand, Debug)]
@@ -56,23 +72,7 @@ enum Sub {
     },
 
     #[command(about = "Check liveness of peers and rpc/api endpoints")]
-    Liveness {
-        #[arg(
-            short,
-            long,
-            help = "Max number of postgres connections",
-            default_value = "10"
-        )]
-        connections: u32,
-
-        #[arg(
-            short,
-            long,
-            help = "Postgres connection timeout in seconds",
-            default_value = "600"
-        )]
-        timeout_seconds: u64,
-    },
+    Liveness,
 }
 
 #[tokio::main]
@@ -87,11 +87,8 @@ async fn main() {
             path,
             keep_clone,
         } => hydrate_chain_registry(git_remote, git_ref, path, keep_clone).await,
-        Sub::Liveness {
-            connections,
-            timeout_seconds,
-        } => {
-            check_liveness(connections, Duration::from_secs(timeout_seconds)).await;
+        Sub::Liveness => {
+            check_liveness(cli.pg_conns, Duration::from_secs(cli.pg_timeout_sec)).await;
         }
     }
 }
