@@ -4,11 +4,10 @@ use sqlx::pool::PoolConnection;
 use std::path::Path;
 use std::time::Duration;
 
+mod db;
 mod hydrate;
 mod liveness;
-mod peers;
 
-use crate::peers::find_peers;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tempfile::TempDir;
 
@@ -79,11 +78,10 @@ enum Sub {
 #[tokio::main]
 async fn main() {
     let cli = Args::parse();
+    let pg_dur = Duration::from_secs(cli.pg_timeout_sec);
 
     match cli.sub {
-        Sub::Serve { port } => {
-            run_server(port, cli.pg_conns, Duration::from_secs(cli.pg_timeout_sec)).await
-        }
+        Sub::Serve { port } => run_server(port, cli.pg_conns, pg_dur).await,
         Sub::Hydrate {
             git_remote,
             git_ref,
@@ -91,7 +89,7 @@ async fn main() {
             keep_clone,
         } => hydrate_chain_registry(git_remote, git_ref, path, keep_clone).await,
         Sub::Liveness => {
-            check_liveness(cli.pg_conns, Duration::from_secs(cli.pg_timeout_sec)).await;
+            check_liveness(cli.pg_conns, pg_dur).await;
         }
     }
 }
@@ -115,7 +113,7 @@ async fn connect_pool(max_conns: u32, timeout: Duration) -> PgPool {
 async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let pool = connect_pool(conns, timeout).await;
 
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let app = Router::new(); // TODO
 
     let addr = format!("0.0.0.0:{}", port);
     println!("Server listening on {}", addr);
@@ -148,7 +146,7 @@ async fn hydrate_chain_registry(
 
     // Insert mainnet chains
     for chain in repo.mainnets {
-        match hydrate::insert_chain(
+        match db::chain::insert_chain(
             &mut conn,
             chain.to_path_buf(),
             "mainnet".to_string(),
@@ -165,7 +163,7 @@ async fn hydrate_chain_registry(
 
     // Insert testnet chains
     for chain in repo.testnets {
-        match hydrate::insert_chain(
+        match db::chain::insert_chain(
             &mut conn,
             chain.to_path_buf(),
             "testnet".to_string(),
@@ -199,8 +197,8 @@ async fn hydrate_chain_registry(
 }
 
 async fn insert_peer(conn: &mut PoolConnection<sqlx::Postgres>, chain_id: i64) {
-    for peer_type in [peers::PeerType::Seed, peers::PeerType::Persistent].into_iter() {
-        let peers = match find_peers(conn, chain_id, peer_type.clone()).await {
+    for peer_type in [db::peer::PeerType::Seed, db::peer::PeerType::Persistent].into_iter() {
+        let peers = match db::peer::find_peers(conn, chain_id, peer_type.clone()).await {
             Ok(peers) => peers,
             Err(err) => {
                 println!("Failed to find peers {:?}: {:?}", peer_type, err);
@@ -209,7 +207,7 @@ async fn insert_peer(conn: &mut PoolConnection<sqlx::Postgres>, chain_id: i64) {
         };
 
         for peer in peers {
-            match peers::insert_peer(conn, chain_id, peer_type.clone(), peer.clone()).await {
+            match db::peer::insert_peer(conn, chain_id, peer_type.clone(), peer.clone()).await {
                 Ok(_) => {}
                 Err(err) => println!("Failed to insert peer {:?}: {:?}", peer, err),
             }
@@ -225,7 +223,7 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
         .await
         .expect("Failed to acquire connection from pool");
 
-    let peers = peers::recent_peers(&mut conn)
+    let peers = db::peer::recent_peers(&mut conn)
         .await
         .expect("Failed to get recent peers");
 
@@ -247,7 +245,7 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
                 liveness::tcp_check_liveness(addr, Duration::from_secs(5))
             };
 
-            match peers::update_liveness(&mut conn, &peer, check_liveness).await {
+            match db::peer::update_liveness(&mut conn, &peer, check_liveness).await {
                 Ok(_) => {}
                 Err(err) => println!("Failed to update liveness for {:?}: {:?}", peer, err),
             }
