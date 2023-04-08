@@ -1,3 +1,4 @@
+use axum::{routing::get, Router};
 use clap::{Parser, Subcommand};
 use sqlx::pool::PoolConnection;
 use std::path::Path;
@@ -20,7 +21,7 @@ struct Args {
     #[arg(
         long,
         help = "Max number of postgres connections",
-        default_value = "10",
+        default_value = "25",
         global = true
     )]
     pg_conns: u32,
@@ -28,7 +29,7 @@ struct Args {
     #[arg(
         long,
         help = "Postgres connection timeout in seconds",
-        default_value = "600",
+        default_value = "60",
         global = true
     )]
     pg_timeout_sec: u64,
@@ -41,7 +42,7 @@ enum Sub {
         #[arg(
             short,
             long,
-            default_value = "8675",
+            default_value = "3000",
             help = "Port to bind",
             env = "PORT"
         )]
@@ -80,7 +81,9 @@ async fn main() {
     let cli = Args::parse();
 
     match cli.sub {
-        Sub::Serve { port } => println!("Serving on port {}", port),
+        Sub::Serve { port } => {
+            run_server(port, cli.pg_conns, Duration::from_secs(cli.pg_timeout_sec)).await
+        }
         Sub::Hydrate {
             git_remote,
             git_ref,
@@ -107,6 +110,19 @@ async fn connect_pool(max_conns: u32, timeout: Duration) -> PgPool {
         .expect("Failed to run migrations");
 
     pool
+}
+
+async fn run_server(port: u16, conns: u32, timeout: Duration) {
+    let pool = connect_pool(conns, timeout).await;
+
+    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+
+    let addr = format!("0.0.0.0:{}", port);
+    println!("Server listening on {}", addr);
+    axum::Server::bind(&addr.parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
 
 async fn hydrate_chain_registry(
