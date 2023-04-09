@@ -6,13 +6,21 @@ use sqlx::postgres::PgPool;
 pub async fn get_chain_data(
     State(pool): State<PgPool>,
     Path((chain_name, network)): Path<(String, String)>,
-) -> Result<Json<serde_json::Value>, APIError> {
+) -> Result<Json<APIResponse<serde_json::Value>>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let chain_data = chain::find_chain(&mut conn, chain_name.as_str(), network.as_str())
+    let chain = chain::find_chain(&mut conn, chain_name.as_str(), network.as_str())
         .await
         .map_err(from_db_error)?;
 
-    Ok(Json(chain_data.chain_data))
+    let resp = APIResponse {
+        meta: Meta {
+            commit: chain.commit,
+            updated_at: chain.updated_at,
+        },
+        result: chain.chain_data,
+    };
+
+    Ok(Json(resp))
 }
 
 pub async fn list_chains(
