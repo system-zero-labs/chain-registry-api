@@ -1,4 +1,4 @@
-use sqlx::pool::PoolConnection;
+use sqlx::{pool::PoolConnection, types::JsonValue};
 use std::fs;
 use std::path::PathBuf;
 
@@ -49,6 +49,29 @@ pub async fn insert_chain(
             err,
         ),
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Chain {
+    pub chain_data: JsonValue,
+    pub asset_data: JsonValue,
+}
+
+pub async fn find_chain(
+    conn: &mut PoolConnection<sqlx::Postgres>,
+    network: &str,
+    chain_name: &str,
+) -> Result<Chain, sqlx::Error> {
+    sqlx::query_as!(
+        Chain,
+        r#"
+        SELECT chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1
+        "#,
+        chain_name,
+        network,
+    )
+    .fetch_one(conn)
+        .await
 }
 
 #[cfg(test)]
@@ -116,6 +139,27 @@ mod tests {
             .count
             .unwrap();
         assert_eq!(count, 1);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("chains"))]
+    async fn test_find_chain(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+
+        let chain = find_chain(&mut conn, "mainnet", "cosmoshub").await?;
+
+        assert!(chain.chain_data.is_object());
+        assert_eq!(
+            chain.chain_data.get("chain_id").unwrap().as_str(),
+            Some("cosmoshub-4")
+        );
+
+        assert!(chain.asset_data.is_object());
+        assert_eq!(
+            chain.asset_data.get("chain_name").unwrap().as_str(),
+            Some("cosmoshub")
+        );
 
         Ok(())
     }
