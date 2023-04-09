@@ -11,7 +11,7 @@ description = "An API for the Cosmos Chain Registry (https://github.com/DavidNix
 [dependencies]
 anyhow = { version = "1.0.70", features = ["backtrace"] }
 axum = "0.6.12"
-chrono = "0.4.24"
+chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.1.11", features = ["derive", "env"] }
 serde = { version = "1.0.159", features = ["derive"] }
 serde_json = { version = "1.0.95", features = ["raw_value"] }

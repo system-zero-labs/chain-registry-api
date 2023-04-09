@@ -7,6 +7,18 @@ use serde_json::json;
 
 pub(crate) mod chain;
 
+#[derive(Debug, serde::Serialize)]
+struct Meta {
+    commit: String,
+    updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct APIResponse<T> {
+    meta: Meta,
+    result: T,
+}
+
 #[derive(Debug)]
 pub enum APIError {
     NotFound,
