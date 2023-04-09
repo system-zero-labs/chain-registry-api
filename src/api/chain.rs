@@ -23,6 +23,26 @@ pub async fn get_chain_data(
     Ok(Json(resp))
 }
 
+pub async fn get_chain_asset_list(
+    State(pool): State<PgPool>,
+    Path((chain_name, network)): Path<(String, String)>,
+) -> Result<Json<APIResponse<serde_json::Value>>, APIError> {
+    let mut conn = pool.acquire().await.map_err(internal_error)?;
+    let chain = chain::find_chain(&mut conn, chain_name.as_str(), network.as_str())
+        .await
+        .map_err(from_db_error)?;
+
+    let resp = APIResponse {
+        meta: Meta {
+            commit: chain.commit,
+            updated_at: chain.updated_at,
+        },
+        result: chain.asset_data,
+    };
+
+    Ok(Json(resp))
+}
+
 pub async fn list_chains(
     State(pool): State<PgPool>,
     Path(network): Path<String>,

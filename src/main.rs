@@ -132,8 +132,12 @@ async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let pool = connect_pool(conns, timeout).await;
 
     let app = Router::new()
-        .route("/v1/:network/chains/:name", get(api::chain::get_chain_data))
         .route("/v1/:network/chains", get(api::chain::list_chains))
+        .route("/v1/:network/chains/:name", get(api::chain::get_chain_data))
+        .route(
+            "/v1/:network/chains/:name/assetlist",
+            get(api::chain::get_chain_asset_list),
+        )
         .with_state(pool);
 
     let addr = format!("0.0.0.0:{}", port);
