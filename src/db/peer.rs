@@ -38,8 +38,8 @@ pub async fn find_peers(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
     chain_id: i64,
     peer_type: PeerType,
-) -> anyhow::Result<Vec<RawPeer>> {
-    match sqlx::query_as!(
+) -> sqlx::Result<Vec<RawPeer>> {
+    sqlx::query_as!(
         RawPeer,
         r#"
         select 
@@ -52,10 +52,6 @@ pub async fn find_peers(
     )
     .fetch_all(conn)
     .await
-    {
-        Ok(peers) => Ok(peers),
-        Err(err) => anyhow::bail!("failed to find {} peers: {:?}", peer_type.as_field(), err),
-    }
 }
 
 pub async fn insert_peer(
@@ -85,14 +81,14 @@ pub async fn insert_peer(
     .await
     {
         Ok(_) => Ok(()),
-        Err(err) => anyhow::bail!("failed to insert peer: {:?}", err),
+        Err(err) => anyhow::bail!(err),
     }
 }
 
 pub async fn recent_peers(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
-) -> anyhow::Result<Vec<Peer>> {
-    match sqlx::query_as!(
+) -> sqlx::Result<Vec<Peer>> {
+    sqlx::query_as!(
         Peer,
         r#"
         WITH recent_chain AS (
@@ -103,19 +99,15 @@ pub async fn recent_peers(
     )
         .fetch_all(conn)
         .await
-    {
-        Ok(peers) => Ok(peers),
-        Err(err) => anyhow::bail!("failed to find recent peers: {:?}", err),
-    }
 }
 
 pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
     conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
     peer: &Peer,
     check: F,
-) -> anyhow::Result<()> {
+) -> sqlx::Result<()> {
     let alive = check(&peer.address).is_ok();
-    match sqlx::query!(
+    sqlx::query!(
         r#"
         UPDATE peer SET is_alive = $1 WHERE id = $2
         "#,
@@ -123,11 +115,9 @@ pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
         peer.id,
     )
     .execute(conn)
-    .await
-    {
-        Ok(_) => Ok(()),
-        Err(err) => anyhow::bail!("failed to update peer {} liveness: {:?}", peer.address, err),
-    }
+    .await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -140,7 +130,7 @@ mod tests {
     async fn test_find_peers(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        let seeds = find_peers(&mut conn, 1, PeerType::Seed).await.unwrap();
+        let seeds = find_peers(&mut conn, 1, PeerType::Seed).await?;
 
         assert_eq!(seeds.len(), 7);
 
@@ -149,9 +139,7 @@ mod tests {
             assert!(seed.address.is_some());
         }
 
-        let peers = find_peers(&mut conn, 1, PeerType::Persistent)
-            .await
-            .unwrap();
+        let peers = find_peers(&mut conn, 1, PeerType::Persistent).await?;
 
         assert_eq!(peers.len(), 3);
 
@@ -195,7 +183,7 @@ mod tests {
     #[sqlx::test(fixtures("recent_peers"))]
     async fn test_recent_peers(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
-        let found = recent_peers(&mut conn).await.unwrap();
+        let found = recent_peers(&mut conn).await?;
 
         assert_eq!(found.len(), 2);
 
@@ -216,9 +204,7 @@ mod tests {
             address: "stub@address".to_string(),
         };
 
-        update_liveness(&mut conn, &peer, stub_liveness)
-            .await
-            .unwrap();
+        update_liveness(&mut conn, &peer, stub_liveness).await?;
 
         let updated = sqlx::query!(
             r#"
@@ -231,9 +217,7 @@ mod tests {
         assert!(!updated.is_alive);
 
         let stub_liveness = |_: &str| -> anyhow::Result<()> { Ok(()) };
-        update_liveness(&mut conn, &peer, stub_liveness)
-            .await
-            .unwrap();
+        update_liveness(&mut conn, &peer, stub_liveness).await?;
 
         let updated = sqlx::query!(
             r#"

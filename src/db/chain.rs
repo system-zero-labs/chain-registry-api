@@ -61,7 +61,7 @@ pub async fn find_chain(
     conn: &mut PoolConnection<sqlx::Postgres>,
     network: &str,
     chain_name: &str,
-) -> Result<Chain, sqlx::Error> {
+) -> sqlx::Result<Chain> {
     sqlx::query_as!(
         Chain,
         r#"
