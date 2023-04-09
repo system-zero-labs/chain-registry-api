@@ -16,22 +16,6 @@ mod liveness;
 struct Args {
     #[command(subcommand)]
     sub: Sub,
-
-    #[arg(
-        long,
-        help = "Max number of postgres connections",
-        default_value = "25",
-        global = true
-    )]
-    pg_conns: u32,
-
-    #[arg(
-        long,
-        help = "Postgres connection timeout in seconds",
-        default_value = "60",
-        global = true
-    )]
-    pg_timeout_sec: u64,
 }
 
 #[derive(Subcommand, Debug)]
@@ -46,6 +30,20 @@ enum Sub {
             env = "PORT"
         )]
         port: u16,
+
+        #[arg(
+            long,
+            help = "Max number of postgres connections",
+            default_value = "25"
+        )]
+        pg_conns: u32,
+
+        #[arg(
+            long,
+            help = "Postgres connection timeout in seconds",
+            default_value = "30"
+        )]
+        pg_timeout_sec: u64,
     },
 
     #[command(about = "Download data from Chain Registry and store in database")]
@@ -72,24 +70,44 @@ enum Sub {
     },
 
     #[command(about = "Check liveness of peers and rpc/api endpoints")]
-    Liveness,
+    Liveness {
+        #[arg(
+            long,
+            help = "Max number of postgres connections",
+            default_value = "10"
+        )]
+        pg_conns: u32,
+
+        #[arg(
+            long,
+            help = "Postgres connection timeout in seconds",
+            default_value = "120"
+        )]
+        pg_timeout_sec: u64,
+    },
 }
 
 #[tokio::main]
 async fn main() {
     let cli = Args::parse();
-    let pg_dur = Duration::from_secs(cli.pg_timeout_sec);
 
     match cli.sub {
-        Sub::Serve { port } => run_server(port, cli.pg_conns, pg_dur).await,
+        Sub::Serve {
+            port,
+            pg_conns,
+            pg_timeout_sec,
+        } => run_server(port, pg_conns, Duration::from_secs(pg_timeout_sec)).await,
         Sub::Hydrate {
             git_remote,
             git_ref,
             path,
             keep_clone,
         } => hydrate_chain_registry(git_remote, git_ref, path, keep_clone).await,
-        Sub::Liveness => {
-            check_liveness(cli.pg_conns, pg_dur).await;
+        Sub::Liveness {
+            pg_conns,
+            pg_timeout_sec,
+        } => {
+            check_liveness(pg_conns, Duration::from_secs(pg_timeout_sec)).await;
         }
     }
 }
