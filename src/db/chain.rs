@@ -74,6 +74,36 @@ pub async fn find_chain(
         .await
 }
 
+#[derive(Debug)]
+pub struct ChainList {
+    pub commit: String,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub names: Vec<String>,
+}
+
+pub async fn list_chains(
+    conn: &mut PoolConnection<sqlx::Postgres>,
+    network: &str,
+) -> sqlx::Result<ChainList> {
+    let row = sqlx::query!(
+        r#"
+        SELECT commit, 
+        array_agg(name order by name) as names, 
+        MAX(updated_at) as updated_at 
+        FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;
+        "#,
+        network,
+    )
+    .fetch_one(conn)
+    .await?;
+
+    Ok(ChainList {
+        commit: row.commit,
+        updated_at: row.updated_at.unwrap_or(chrono::Utc::now()),
+        names: row.names.unwrap_or(vec![]),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,6 +190,18 @@ mod tests {
             chain.asset_data.get("chain_name").unwrap().as_str(),
             Some("cosmoshub")
         );
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("chains"))]
+    async fn test_list_chains(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+
+        let list = list_chains(&mut conn, "mainnet").await?;
+
+        assert_eq!(list.commit, "stubcommit");
+        assert_eq!(list.names, vec!["cosmoshub"]);
 
         Ok(())
     }
