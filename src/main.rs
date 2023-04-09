@@ -1,15 +1,15 @@
 use axum::{routing::get, Router};
 use clap::{Parser, Subcommand};
 use sqlx::pool::PoolConnection;
+use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::path::Path;
 use std::time::Duration;
+use tempfile::TempDir;
 
+mod api;
 mod db;
 mod hydrate;
 mod liveness;
-
-use sqlx::postgres::{PgPool, PgPoolOptions};
-use tempfile::TempDir;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -113,7 +113,9 @@ async fn connect_pool(max_conns: u32, timeout: Duration) -> PgPool {
 async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let pool = connect_pool(conns, timeout).await;
 
-    let app = Router::new(); // TODO
+    let app = Router::new()
+        .route("/v1/:network/chain/:name", get(api::chain::get_chain_data))
+        .with_state(pool);
 
     let addr = format!("0.0.0.0:{}", port);
     println!("Server listening on {}", addr);
