@@ -45,7 +45,7 @@ pub fn shallow_clone(
         );
     }
     let commit = std::str::from_utf8(output.stdout.as_ref())?;
-    let commit = commit.to_string();
+    let commit = commit.trim().to_string();
 
     Ok(ChainRegRepo {
         commit,
@@ -88,6 +88,7 @@ mod tests {
         .unwrap();
 
         assert!(!repo.commit.is_empty());
+        assert!(repo.commit.chars().all(|c| c.is_ascii_hexdigit()));
 
         assert!(temp_dir.path().join("cosmoshub/chain.json").exists());
 
