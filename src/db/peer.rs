@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use sqlx::PgExecutor;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawPeer {
@@ -35,7 +36,7 @@ impl PeerType {
 }
 
 pub async fn find_peers(
-    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+    executor: impl PgExecutor<'_>,
     chain_id: i64,
     peer_type: PeerType,
 ) -> sqlx::Result<Vec<RawPeer>> {
@@ -50,12 +51,12 @@ pub async fn find_peers(
         peer_type.as_field(),
         chain_id,
     )
-    .fetch_all(conn)
+    .fetch_all(executor)
     .await
 }
 
 pub async fn insert_peer(
-    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+    executor: impl PgExecutor<'_>,
     chain_id: i64,
     peer_type: PeerType,
     peer: RawPeer,
@@ -77,7 +78,7 @@ pub async fn insert_peer(
         address,
         peer_type.as_str(),
     )
-    .execute(conn)
+    .execute(executor)
     .await
     {
         Ok(_) => Ok(()),
@@ -85,9 +86,7 @@ pub async fn insert_peer(
     }
 }
 
-pub async fn recent_peers(
-    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
-) -> sqlx::Result<Vec<Peer>> {
+pub async fn recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Vec<Peer>> {
     sqlx::query_as!(
         Peer,
         r#"
@@ -97,12 +96,12 @@ pub async fn recent_peers(
         SELECT peer.id, address FROM peer JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)
         "#,
     )
-        .fetch_all(conn)
+        .fetch_all(executor)
         .await
 }
 
 pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
-    conn: &mut sqlx::pool::PoolConnection<sqlx::Postgres>,
+    executor: impl PgExecutor<'_>,
     peer: &Peer,
     check: F,
 ) -> sqlx::Result<()> {
@@ -114,7 +113,7 @@ pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
         alive,
         peer.id,
     )
-    .execute(conn)
+    .execute(executor)
     .await?;
 
     Ok(())

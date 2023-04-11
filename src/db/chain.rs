@@ -1,9 +1,9 @@
-use sqlx::{pool::PoolConnection, types::JsonValue};
+use sqlx::{types::JsonValue, PgExecutor};
 use std::fs;
 use std::path::PathBuf;
 
 pub async fn insert_chain(
-    conn: &mut PoolConnection<sqlx::Postgres>,
+    executor: impl PgExecutor<'_>,
     path: PathBuf,
     network: String,
     commit: &String,
@@ -38,7 +38,7 @@ pub async fn insert_chain(
         assets_json,
         commit,
     )
-    .fetch_one(conn)
+    .fetch_one(executor)
     .await
     {
         Ok(row) => Ok(row.id),
@@ -60,7 +60,7 @@ pub struct Chain {
 }
 
 pub async fn find_chain(
-    conn: &mut PoolConnection<sqlx::Postgres>,
+    executor: impl PgExecutor<'_>,
     network: &str,
     chain_name: &str,
 ) -> sqlx::Result<Chain> {
@@ -72,7 +72,7 @@ pub async fn find_chain(
         chain_name,
         network,
     )
-    .fetch_one(conn)
+    .fetch_one(executor)
         .await
 }
 
@@ -83,10 +83,7 @@ pub struct ChainList {
     pub names: Vec<String>,
 }
 
-pub async fn list_chains(
-    conn: &mut PoolConnection<sqlx::Postgres>,
-    network: &str,
-) -> sqlx::Result<ChainList> {
+pub async fn list_chains(executor: impl PgExecutor<'_>, network: &str) -> sqlx::Result<ChainList> {
     let row = sqlx::query!(
         r#"
         SELECT commit, 
@@ -96,7 +93,7 @@ pub async fn list_chains(
         "#,
         network,
     )
-    .fetch_one(conn)
+    .fetch_one(executor)
     .await?;
 
     Ok(ChainList {

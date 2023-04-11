@@ -1,7 +1,8 @@
+use crate::db::peer::PeerType;
 use axum::{routing::get, Router};
 use clap::{Parser, Subcommand};
-use sqlx::pool::PoolConnection;
 use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::Acquire;
 use std::path::Path;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -163,6 +164,7 @@ async fn hydrate_chain_registry(
         .expect("shallow clone failed");
 
     let mut conn = pool.acquire().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
 
     // chain ids mutable array of i64
     let mut chain_ids: Vec<i64> = Vec::new();
@@ -172,7 +174,7 @@ async fn hydrate_chain_registry(
     // Insert mainnet chains
     for chain in repo.mainnets {
         match db::chain::insert_chain(
-            &mut conn,
+            &mut tx,
             chain.to_path_buf(),
             "mainnet".to_string(),
             &repo.commit,
@@ -189,7 +191,7 @@ async fn hydrate_chain_registry(
     // Insert testnet chains
     for chain in repo.testnets {
         match db::chain::insert_chain(
-            &mut conn,
+            &mut tx,
             chain.to_path_buf(),
             "testnet".to_string(),
             &repo.commit,
@@ -205,8 +207,11 @@ async fn hydrate_chain_registry(
 
     println!("Inserting peers...");
     for chain_id in chain_ids {
-        insert_peer(&mut conn, chain_id).await;
+        insert_peers(&mut tx, chain_id, PeerType::Seed).await;
+        insert_peers(&mut tx, chain_id, PeerType::Persistent).await;
     }
+
+    tx.commit().await.expect("Failed to commit transaction");
 
     if keep_clone {
         return;
@@ -221,21 +226,23 @@ async fn hydrate_chain_registry(
     }
 }
 
-async fn insert_peer(conn: &mut PoolConnection<sqlx::Postgres>, chain_id: i64) {
-    for peer_type in [db::peer::PeerType::Seed, db::peer::PeerType::Persistent].into_iter() {
-        let peers = match db::peer::find_peers(conn, chain_id, peer_type.clone()).await {
-            Ok(peers) => peers,
-            Err(err) => {
-                println!("Failed to find peers {:?}: {:?}", peer_type, err);
-                continue;
-            }
-        };
+async fn insert_peers(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    chain_id: i64,
+    peer_type: PeerType,
+) {
+    let peers = match db::peer::find_peers(&mut *tx, chain_id, peer_type.clone()).await {
+        Ok(peers) => peers,
+        Err(err) => {
+            println!("Failed to find peers for chain {}: {:?}", chain_id, err);
+            return;
+        }
+    };
 
-        for peer in peers {
-            match db::peer::insert_peer(conn, chain_id, peer_type.clone(), peer.clone()).await {
-                Ok(_) => {}
-                Err(err) => println!("Failed to insert peer {:?}: {:?}", peer, err),
-            }
+    for peer in peers {
+        match db::peer::insert_peer(&mut *tx, chain_id, peer_type.clone(), peer.clone()).await {
+            Ok(_) => {}
+            Err(err) => println!("Failed to insert peer {:?}: {:?}", peer, err),
         }
     }
 }
