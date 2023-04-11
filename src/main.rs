@@ -155,14 +155,13 @@ async fn hydrate_chain_registry(
     path: Option<String>,
     keep_clone: bool,
 ) {
-    let pool = connect_pool(2, Duration::from_secs(30)).await;
-
     let clone_dir =
         path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
     println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
     let repo = hydrate::shallow_clone(remote, git_ref, &clone_dir.clone().into())
         .expect("shallow clone failed");
 
+    let pool = connect_pool(2, Duration::from_secs(30)).await;
     let mut conn = pool.acquire().await.unwrap();
     let mut tx = conn.begin().await.unwrap();
 
@@ -211,7 +210,10 @@ async fn hydrate_chain_registry(
         insert_peers(&mut tx, chain_id, PeerType::Persistent).await;
     }
 
-    tx.commit().await.expect("Failed to commit transaction");
+    match tx.commit().await {
+        Ok(_) => println!("Hydration complete."),
+        Err(err) => println!("Failed to commit transaction: {:?}", err),
+    }
 
     if keep_clone {
         return;
