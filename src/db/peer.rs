@@ -8,20 +8,30 @@ pub struct RawPeer {
 }
 
 #[derive(Debug, Clone)]
+pub struct Peer {
+    pub id: i64,
+    pub address: String,
+    pub commit: String,
+    pub is_alive: bool,
+    pub peer_type: String,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum PeerType {
     Seed,
     Persistent,
 }
 
-#[derive(Debug, Clone)]
-pub struct Peer {
-    id: i64,
-    address: String,
-    commit: String,
-    peer_type: String,
-}
-
 impl PeerType {
+    pub fn from_str(s: &str) -> Option<PeerType> {
+        match s {
+            "seed" => Some(PeerType::Seed),
+            "persistent" => Some(PeerType::Persistent),
+            _ => None,
+        }
+    }
+
     fn as_field(&self) -> &str {
         match self {
             PeerType::Seed => "seeds",
@@ -95,7 +105,8 @@ pub async fn all_recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Vec
         WITH recent_chain AS (
             SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1
         )
-        SELECT peer.id, address, peer.type as peer_type, chain.commit FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)
+        SELECT peer.id, address, peer.type as peer_type, chain.commit, peer.is_alive, peer.updated_at
+        FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)
         "#,
     )
         .fetch_all(executor)
@@ -113,7 +124,7 @@ pub async fn recent_peers(
         WITH recent_chain AS (
             SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1
         )
-        SELECT peer.id, peer.address, peer.type as peer_type, chain.commit
+        SELECT peer.id, peer.address, peer.type as peer_type, peer.is_alive, chain.commit, peer.updated_at
         FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk 
         WHERE chain.commit IN (SELECT commit FROM recent_chain) AND
         chain.name = $1 AND 
@@ -229,6 +240,7 @@ mod tests {
         assert_eq!(found[0].address, "abc123@seed1.example.com");
         assert_eq!(found[0].commit, "new_commit");
         assert_eq!(found[0].peer_type, "seed");
+        assert!(found[0].is_alive);
 
         Ok(())
     }
@@ -247,6 +259,8 @@ mod tests {
             address: "stub@address".to_string(),
             commit: "stub".to_string(),
             peer_type: "seed".to_string(),
+            is_alive: true,
+            updated_at: chrono::Utc::now(),
         };
 
         update_liveness(&mut conn, &peer, stub_liveness).await?;

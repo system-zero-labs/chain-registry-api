@@ -6,6 +6,7 @@ use axum::{
 use serde_json::json;
 
 pub(crate) mod chain;
+pub(crate) mod peer;
 
 #[derive(Debug, serde::Serialize)]
 struct Meta {
