@@ -10,7 +10,7 @@ description = "An API for the Cosmos Chain Registry (https://github.com/DavidNix
 # TODO: add https://github.com/juhaku/utoipa for OpenAPI spec generation
 [dependencies]
 anyhow = { version = "1.0.70", features = ["backtrace"] }
-axum = "0.6.12"
+axum = { version = "0.6.12", features = ["query"] }
 chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.1.11", features = ["derive", "env"] }
 serde = { version = "1.0.159", features = ["derive"] }

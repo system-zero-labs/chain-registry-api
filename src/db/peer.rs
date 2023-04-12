@@ -17,7 +17,25 @@ pub struct Peer {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+pub type Peers = Vec<Peer>;
+
+pub fn find_commit(peers: &Peers) -> Option<String> {
+    peers.first().map(|p| p.commit.clone())
+}
+
+pub fn find_updated_at(peers: &Peers) -> Option<chrono::DateTime<chrono::Utc>> {
+    peers.iter().map(|p| p.updated_at.clone()).max()
+}
+
+pub fn filter_by_type(peers: &Peers, peer_type: PeerType) -> Peers {
+    peers
+        .iter()
+        .filter(|p| PeerType::from_str(p.peer_type.as_str()) == Some(peer_type))
+        .cloned()
+        .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum PeerType {
     Seed,
     Persistent,
@@ -98,7 +116,7 @@ pub async fn insert_peer(
     }
 }
 
-pub async fn all_recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Vec<Peer>> {
+pub async fn all_recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Peers> {
     sqlx::query_as!(
         Peer,
         r#"
@@ -140,26 +158,23 @@ pub async fn recent_peers(
 pub struct PeerFilter {
     pub chain_name: String,
     pub network: String,
-    pub peer_type: PeerType,
-    pub is_alive: Option<bool>,
+    pub include_all: bool,
 }
 
 pub async fn filter_recent_peers(
     executor: impl PgExecutor<'_>,
     filter: &PeerFilter,
-) -> sqlx::Result<Vec<String>> {
+) -> sqlx::Result<Peers> {
     let peers = recent_peers(executor, &filter.chain_name, &filter.network).await?;
 
-    let filtered: Vec<String> = peers
+    let filtered: Vec<Peer> = peers
         .into_iter()
-        .filter(|p| PeerType::from_str(p.peer_type.as_str()) == Some(filter.peer_type.clone()))
         .filter(|p| {
-            filter
-                .is_alive
-                .map(|alive| alive == p.is_alive)
-                .unwrap_or(true)
+            if filter.include_all {
+                return true;
+            }
+            p.is_alive
         })
-        .map(|p| p.address)
         .collect();
 
     if filtered.is_empty() {
@@ -283,18 +298,15 @@ mod tests {
         let mut filter = PeerFilter {
             chain_name: "cosmoshub".to_string(),
             network: "mainnet".to_string(),
-            peer_type: PeerType::Seed,
-            is_alive: None,
+            include_all: true,
         };
         let found = filter_recent_peers(&mut conn, &filter).await?;
-        assert_eq!(vec!["abc123@public-seed-node.com:26656"], found);
+        assert_eq!(found.len(), 2);
+        assert_eq!("abc123@public-seed-node.com:26656", found[0].address);
+        assert_eq!("efg987@public-persistent.com:26656", found[1].address);
 
-        filter.peer_type = PeerType::Persistent;
-        let found = filter_recent_peers(&mut conn, &filter).await?;
-        assert_eq!(vec!["efg987@public-persistent.com:26656"], found);
-
-        filter.is_alive = Some(true);
-        assert_err!(filter_recent_peers(&mut conn, &filter).await);
+        filter.include_all = false;
+        assert_eq!(found.len(), 1);
 
         Ok(())
     }

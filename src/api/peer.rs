@@ -1,6 +1,8 @@
 use crate::api::{from_db_error, internal_error, APIError, APIResponse, Meta};
-use crate::db::peer::{PeerType, PeerFilter, filter_recent_peers};
-use axum::{extract::Path, extract::State, extract::Query, Json};
+use crate::db::peer::{
+    filter_by_type, filter_recent_peers, find_commit, find_updated_at, PeerFilter, PeerType,
+};
+use axum::{extract::Path, extract::Query, extract::State, Json};
 use sqlx::postgres::PgPool;
 
 #[derive(Debug, serde::Serialize)]
@@ -9,32 +11,44 @@ pub struct PeerResult {
     pub persistent: Vec<String>,
 }
 
+#[derive(Debug, serde::Deserialize)]
 pub struct PeerParams {
-    pub filter: String
+    include_all: bool,
 }
 
 pub async fn list_peers(
     State(pool): State<PgPool>,
     Path((network, chain_name)): Path<(String, String)>,
-    Query(params): Query<PeerParams>,
+    params: Option<Query<PeerParams>>,
 ) -> Result<Json<APIResponse<PeerResult>>, APIError> {
-    let is_alive = match params.filter.as_str() {
-        "all" => None,
-        _ => Some(true),
-    };
+    println!("params: {:?}", params);
+    let include_all = params.map(|p| p.include_all).unwrap_or(false);
     let filter = PeerFilter {
         chain_name,
         network,
-        peer_type: PeerType::Seed,
-        is_alive,
+        include_all,
     };
 
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let seeds = filter_recent_peers()
+    let peers = filter_recent_peers(&mut conn, &filter)
+        .await
+        .map_err(from_db_error)?;
+
+    let commit = find_commit(&peers).unwrap_or_default();
+    let updated_at = find_updated_at(&peers).unwrap_or_default();
 
     let resp = APIResponse {
         meta: Meta { commit, updated_at },
-        result,
+        result: PeerResult {
+            seeds: filter_by_type(&peers, PeerType::Seed)
+                .iter()
+                .map(|p| p.address.clone())
+                .collect(),
+            persistent: filter_by_type(&peers, PeerType::Persistent)
+                .iter()
+                .map(|p| p.address.clone())
+                .collect(),
+        },
     };
 
     Ok(Json(resp))
