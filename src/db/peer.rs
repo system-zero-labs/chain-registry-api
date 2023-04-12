@@ -17,6 +17,8 @@ pub enum PeerType {
 pub struct Peer {
     id: i64,
     address: String,
+    commit: String,
+    peer_type: String,
 }
 
 impl PeerType {
@@ -86,18 +88,42 @@ pub async fn insert_peer(
     }
 }
 
-pub async fn recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Vec<Peer>> {
+pub async fn all_recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Vec<Peer>> {
     sqlx::query_as!(
         Peer,
         r#"
         WITH recent_chain AS (
-        SELECT commit, max(created_at) as created_at FROM chain GROUP BY commit ORDER BY created_at DESC LIMIT 1
+            SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1
         )
-        SELECT peer.id, address FROM peer JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)
+        SELECT peer.id, address, peer.type as peer_type, chain.commit FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)
         "#,
     )
         .fetch_all(executor)
         .await
+}
+
+pub async fn recent_peers(
+    executor: impl PgExecutor<'_>,
+    chain_name: &str,
+    network: &str,
+) -> sqlx::Result<Vec<Peer>> {
+    sqlx::query_as!(
+        Peer,
+        r#"
+        WITH recent_chain AS (
+            SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1
+        )
+        SELECT peer.id, peer.address, peer.type as peer_type, chain.commit
+        FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk 
+        WHERE chain.commit IN (SELECT commit FROM recent_chain) AND
+        chain.name = $1 AND 
+        chain.network = $2 
+        "#,
+        chain_name,
+        network,
+    )
+    .fetch_all(executor)
+    .await
 }
 
 pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
@@ -180,11 +206,29 @@ mod tests {
     }
 
     #[sqlx::test(fixtures("recent_peers"))]
-    async fn test_recent_peers(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_all_recent_peers(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
-        let found = recent_peers(&mut conn).await?;
+        let found = all_recent_peers(&mut conn).await?;
 
         assert_eq!(found.len(), 2);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("recent_peers"))]
+    async fn test_recent_peers(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+        let found = recent_peers(&mut conn, "cosmoshub", "mainnet").await?;
+
+        assert_eq!(found.len(), 2);
+
+        let found = recent_peers(&mut conn, "juno", "mainnet").await?;
+
+        assert_eq!(found.len(), 3);
+
+        assert_eq!(found[0].address, "abc123@seed1.example.com");
+        assert_eq!(found[0].commit, "new_commit");
+        assert_eq!(found[0].peer_type, "seed");
 
         Ok(())
     }
@@ -201,6 +245,8 @@ mod tests {
         let peer = Peer {
             id: 1,
             address: "stub@address".to_string(),
+            commit: "stub".to_string(),
+            peer_type: "seed".to_string(),
         };
 
         update_liveness(&mut conn, &peer, stub_liveness).await?;

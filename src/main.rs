@@ -257,7 +257,7 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
         .await
         .expect("Failed to acquire connection from pool");
 
-    let peers = db::peer::recent_peers(&mut conn)
+    let peers = db::peer::all_recent_peers(&mut conn)
         .await
         .expect("Failed to get recent peers");
 
