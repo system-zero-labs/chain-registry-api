@@ -135,12 +135,12 @@ async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let app = Router::new()
         .route("/v1/:network", get(api::chain::list_chains))
         .route("/v1/:network/chains", get(api::chain::list_chains))
-        .route("/v1/:network/:name", get(api::chain::get_chain_data))
+        .route("/v1/:network/:chain_name", get(api::chain::get_chain_data))
         .route(
-            "/v1/:network/:name/assetlist",
+            "/v1/:network/:chain_name/assetlist",
             get(api::chain::get_chain_asset_list),
         )
-        .route("/v1/:network/:name/peers", get(api::peer::list_peers))
+        .route("/v1/:network/:chain_name/peers", get(api::peer::list_peers))
         .with_state(pool);
 
     let addr = format!("0.0.0.0:{}", port);

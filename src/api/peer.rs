@@ -11,7 +11,7 @@ pub struct PeerResult {
 
 pub async fn list_peers(
     State(pool): State<PgPool>,
-    Path((chain_name, network)): Path<(String, String)>,
+    Path((network, chain_name)): Path<(String, String)>,
 ) -> Result<Json<APIResponse<PeerResult>>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
     let peers = recent_peers(&mut conn, chain_name.as_str(), network.as_str())

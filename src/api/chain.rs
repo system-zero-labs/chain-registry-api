@@ -5,10 +5,10 @@ use sqlx::postgres::PgPool;
 
 pub async fn get_chain_data(
     State(pool): State<PgPool>,
-    Path((chain_name, network)): Path<(String, String)>,
+    Path((network, chain_name)): Path<(String, String)>,
 ) -> Result<Json<APIResponse<serde_json::Value>>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let chain = chain::find_chain(&mut conn, chain_name.as_str(), network.as_str())
+    let chain = chain::find_chain(&mut conn, network.as_str(), chain_name.as_str())
         .await
         .map_err(from_db_error)?;
 
@@ -25,10 +25,10 @@ pub async fn get_chain_data(
 
 pub async fn get_chain_asset_list(
     State(pool): State<PgPool>,
-    Path((chain_name, network)): Path<(String, String)>,
+    Path((network, chain_name)): Path<(String, String)>,
 ) -> Result<Json<APIResponse<serde_json::Value>>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let chain = chain::find_chain(&mut conn, chain_name.as_str(), network.as_str())
+    let chain = chain::find_chain(&mut conn, network.as_str(), chain_name.as_str())
         .await
         .map_err(from_db_error)?;
 
