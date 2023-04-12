@@ -22,8 +22,8 @@ VALUES (2,
 INSERT INTO peer (chain_id_fk, type, address)
 VALUES (2, 'seed', 'abc123@public-seed-node.com:26656');
 
-INSERT INTO peer (chain_id_fk, type, address)
-VALUES (2, 'persistent', 'efg987@public-persistent.com:26656');
+INSERT INTO peer (chain_id_fk, type, address, is_alive)
+VALUES (2, 'persistent', 'efg987@public-persistent.com:26656', false);
 
 -- different chain
 INSERT INTO chain (id, name, network, commit, asset_data, chain_data)

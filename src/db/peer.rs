@@ -137,6 +137,38 @@ pub async fn recent_peers(
     .await
 }
 
+pub struct PeerFilter {
+    pub chain_name: String,
+    pub network: String,
+    pub peer_type: PeerType,
+    pub is_alive: Option<bool>,
+}
+
+pub async fn filter_recent_peers(
+    executor: impl PgExecutor<'_>,
+    filter: &PeerFilter,
+) -> sqlx::Result<Vec<String>> {
+    let peers = recent_peers(executor, &filter.chain_name, &filter.network).await?;
+
+    let filtered: Vec<String> = peers
+        .into_iter()
+        .filter(|p| PeerType::from_str(p.peer_type.as_str()) == Some(filter.peer_type.clone()))
+        .filter(|p| {
+            filter
+                .is_alive
+                .map(|alive| alive == p.is_alive)
+                .unwrap_or(true)
+        })
+        .map(|p| p.address)
+        .collect();
+
+    if filtered.is_empty() {
+        return Err(sqlx::Error::RowNotFound);
+    }
+
+    Ok(filtered)
+}
+
 pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
     executor: impl PgExecutor<'_>,
     peer: &Peer,
@@ -241,6 +273,28 @@ mod tests {
         assert_eq!(found[0].commit, "new_commit");
         assert_eq!(found[0].peer_type, "seed");
         assert!(found[0].is_alive);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("recent_peers"))]
+    async fn test_filter_recent_peers(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+        let mut filter = PeerFilter {
+            chain_name: "cosmoshub".to_string(),
+            network: "mainnet".to_string(),
+            peer_type: PeerType::Seed,
+            is_alive: None,
+        };
+        let found = filter_recent_peers(&mut conn, &filter).await?;
+        assert_eq!(vec!["abc123@public-seed-node.com:26656"], found);
+
+        filter.peer_type = PeerType::Persistent;
+        let found = filter_recent_peers(&mut conn, &filter).await?;
+        assert_eq!(vec!["efg987@public-persistent.com:26656"], found);
+
+        filter.is_alive = Some(true);
+        assert_err!(filter_recent_peers(&mut conn, &filter).await);
 
         Ok(())
     }
