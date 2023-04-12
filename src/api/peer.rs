@@ -21,7 +21,6 @@ pub async fn list_peers(
     Path((network, chain_name)): Path<(String, String)>,
     params: Option<Query<PeerParams>>,
 ) -> Result<Json<APIResponse<PeerResult>>, APIError> {
-    println!("params: {:?}", params);
     let include_all = params.map(|p| p.include_all).unwrap_or(false);
     let filter = PeerFilter {
         chain_name,
