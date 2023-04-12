@@ -52,3 +52,29 @@ pub async fn list_peers(
 
     Ok(Json(resp))
 }
+
+pub async fn seed_string(
+    State(pool): State<PgPool>,
+    Path((network, chain_name)): Path<(String, String)>,
+    params: Option<Query<PeerParams>>,
+) -> Result<String, APIError> {
+    let resp = list_peers(State(pool), Path((network, chain_name)), params)
+        .await?
+        .0
+        .result;
+
+    Ok(resp.seeds.join(","))
+}
+
+pub async fn persistent_peer_string(
+    State(pool): State<PgPool>,
+    Path((network, chain_name)): Path<(String, String)>,
+    params: Option<Query<PeerParams>>,
+) -> Result<String, APIError> {
+    let resp = list_peers(State(pool), Path((network, chain_name)), params)
+        .await?
+        .0
+        .result;
+
+    Ok(resp.persistent.join(","))
+}

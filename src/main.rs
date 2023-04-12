@@ -141,6 +141,14 @@ async fn run_server(port: u16, conns: u32, timeout: Duration) {
             get(api::chain::get_chain_asset_list),
         )
         .route("/v1/:network/:chain_name/peers", get(api::peer::list_peers))
+        .route(
+            "/v1/:network/:chain_name/peers/seed_string",
+            get(api::peer::seed_string),
+        )
+        .route(
+            "/v1/:network/:chain_name/peers/persistent_peer_string",
+            get(api::peer::persistent_peer_string),
+        )
         .with_state(pool);
 
     let addr = format!("0.0.0.0:{}", port);
