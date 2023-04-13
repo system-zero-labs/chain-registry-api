@@ -7,6 +7,7 @@ use serde_json::json;
 
 pub(crate) mod chain;
 pub(crate) mod peer;
+pub(crate) mod router;
 
 #[derive(Debug, serde::Serialize)]
 struct Meta {

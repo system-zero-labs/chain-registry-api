@@ -1,5 +1,5 @@
 use crate::db::peer::PeerType;
-use axum::{routing::get, Router};
+use axum::Router;
 use clap::{Parser, Subcommand};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::Acquire;
@@ -132,24 +132,8 @@ async fn connect_pool(max_conns: u32, timeout: Duration) -> PgPool {
 async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let pool = connect_pool(conns, timeout).await;
 
-    let app = Router::new()
-        .route("/v1/:network", get(api::chain::list_chains))
-        .route("/v1/:network/chains", get(api::chain::list_chains))
-        .route("/v1/:network/:chain_name", get(api::chain::get_chain_data))
-        .route(
-            "/v1/:network/:chain_name/assetlist",
-            get(api::chain::get_chain_asset_list),
-        )
-        .route("/v1/:network/:chain_name/peers", get(api::peer::list_peers))
-        .route(
-            "/v1/:network/:chain_name/peers/seed_string",
-            get(api::peer::seed_string),
-        )
-        .route(
-            "/v1/:network/:chain_name/peers/persistent_peer_string",
-            get(api::peer::persistent_peer_string),
-        )
-        .with_state(pool);
+    let api_routes = api::router::new();
+    let app = Router::new().nest("/v1", api_routes).with_state(pool);
 
     let addr = format!("0.0.0.0:{}", port);
     println!("Server listening on {}", addr);
