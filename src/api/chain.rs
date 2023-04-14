@@ -43,11 +43,16 @@ pub async fn get_chain_asset_list(
     Ok(Json(resp))
 }
 
+/// List chains by network
 #[utoipa::path(
     get,
     path = "/v1/{network}/chains",
     responses(
         (status = 200, description = "Chains found successfully"),
+        (status = 404, description = "Network does not exist"),
+    ),
+    params(
+        ("network" = String, Path, description = "mainnet or testnet")
     ),
 )]
 pub async fn list_chains(
