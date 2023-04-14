@@ -43,6 +43,13 @@ pub async fn get_chain_asset_list(
     Ok(Json(resp))
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/{network}/chains",
+    responses(
+        (status = 200, description = "Chains found successfully"),
+    ),
+)]
 pub async fn list_chains(
     State(pool): State<PgPool>,
     Path(network): Path<String>,

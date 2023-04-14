@@ -133,7 +133,7 @@ async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let pool = connect_pool(conns, timeout).await;
 
     let api_routes = api::router::new();
-    let app = Router::new().nest("/v1", api_routes).with_state(pool);
+    let app = Router::new().merge(api_routes).with_state(pool);
 
     let addr = format!("0.0.0.0:{}", port);
     println!("Server listening on {}", addr);
