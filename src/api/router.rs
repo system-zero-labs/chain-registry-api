@@ -36,6 +36,6 @@ pub fn new() -> Router<sqlx::postgres::PgPool> {
     doc.info.title = String::from("Chain Registry API");
 
     Router::new()
-        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", doc))
+        .merge(SwaggerUi::new("/v1-docs").url("/v1-api-docs/openapi.json", doc))
         .nest("/v1", v1_routes)
 }
