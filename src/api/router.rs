@@ -10,6 +10,9 @@ use crate::api::peer::{list_peers, persistent_peer_string, seed_string};
     crate::api::chain::list_chains,
     crate::api::chain::get_chain_data,
     crate::api::chain::get_chain_asset_list,
+    crate::api::peer::list_peers,
+    crate::api::peer::seed_string,
+    crate::api::peer::persistent_peer_string,
 ))]
 // components(
 // schemas(APIResponse<Vec<String>>, Meta)

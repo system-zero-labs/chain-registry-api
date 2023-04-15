@@ -13,8 +13,9 @@ responses(
 ),
 params(
 ("network" = String, Path, description = "mainnet or testnet"),
-("chain_name" = String, Path, description = "Chain name")
+("chain_name" = String, Path, description = "Chain name, e.g. cosmoshub")
 ),
+tag = "Chains",
 )]
 pub async fn get_chain_data(
     State(pool): State<PgPool>,
@@ -42,12 +43,13 @@ get,
 path = "/v1/{network}/{chain_name}/assetlist",
 responses(
 (status = 200, description = "Assetlist found successfully"),
-(status = 404, description = "Network or chain does not exist"),
+(status = 404, description = "Network, chain, or assetlist does not exist"),
 ),
 params(
 ("network" = String, Path, description = "mainnet or testnet"),
-("chain_name" = String, Path, description = "Chain name")
+("chain_name" = String, Path, description = "Chain name, e.g. cosmoshub")
 ),
+tag = "Chains",
 )]
 pub async fn get_chain_asset_list(
     State(pool): State<PgPool>,
@@ -80,6 +82,7 @@ responses(
 params(
 ("network" = String, Path, description = "mainnet or testnet")
 ),
+tag = "Chains",
 )]
 pub async fn list_chains(
     State(pool): State<PgPool>,
