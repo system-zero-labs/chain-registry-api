@@ -3,19 +3,21 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use serde::Serialize;
 use serde_json::json;
+use utoipa::ToSchema;
 
 pub(crate) mod chain;
 pub(crate) mod peer;
 pub(crate) mod router;
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 struct Meta {
     commit: String,
     updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub struct APIResponse<T> {
     meta: Meta,
     result: T,

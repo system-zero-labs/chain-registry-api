@@ -2,22 +2,22 @@ use axum::{routing::get, Router};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::api::chain::{get_chain_asset_list, get_chain_data, list_chains};
-use crate::api::peer::{list_peers, persistent_peer_string, seed_string};
+use crate::api::chain::{get_chain_asset_list, get_chain_data, list_chains, ChainList};
+use crate::api::peer::{list_peers, persistent_peer_string, seed_string, PeerList, PeerResult};
+use crate::api::Meta;
 
 #[derive(OpenApi)]
-#[openapi(paths(
-    crate::api::chain::list_chains,
-    crate::api::chain::get_chain_data,
-    crate::api::chain::get_chain_asset_list,
-    crate::api::peer::list_peers,
-    crate::api::peer::seed_string,
-    crate::api::peer::persistent_peer_string,
-))]
-// components(
-// schemas(APIResponse<Vec<String>>, Meta)
-// ),
-//
+#[openapi(
+    paths(
+        crate::api::chain::list_chains,
+        crate::api::chain::get_chain_data,
+        crate::api::chain::get_chain_asset_list,
+        crate::api::peer::list_peers,
+        crate::api::peer::seed_string,
+        crate::api::peer::persistent_peer_string,
+    ),
+    components(schemas(PeerList, PeerResult, Meta, ChainList))
+)]
 struct ApiDoc;
 
 pub fn new() -> Router<sqlx::postgres::PgPool> {

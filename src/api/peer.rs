@@ -1,17 +1,25 @@
-use crate::api::{from_db_error, internal_error, APIError, APIResponse, Meta};
+use crate::api::{from_db_error, internal_error, APIError, Meta};
 use crate::db::peer::{
     filter_by_type, filter_recent_peers, find_commit, find_updated_at, PeerFilter, PeerType,
 };
 use axum::{extract::Path, extract::Query, extract::State, Json};
+use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
+use utoipa::ToSchema;
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PeerList {
+    meta: Meta,
+    result: PeerResult,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PeerResult {
     pub seeds: Vec<String>,
     pub persistent: Vec<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PeerParams {
     include_all: bool,
 }
@@ -23,7 +31,7 @@ pub struct PeerParams {
 get,
 path = "/v1/{network}/{chain_name}/peers",
 responses(
-(status = 200, description = "Peers found successfully"),
+(status = 200, description = "Peers found successfully", body = PeerList),
 (status = 404, description = "Network or chain does not exist, or chain does not have any peers"),
 ),
 params(
@@ -37,7 +45,7 @@ pub async fn list_peers(
     State(pool): State<PgPool>,
     Path((network, chain_name)): Path<(String, String)>,
     params: Option<Query<PeerParams>>,
-) -> Result<Json<APIResponse<PeerResult>>, APIError> {
+) -> Result<Json<PeerList>, APIError> {
     let include_all = params.map(|p| p.include_all).unwrap_or(false);
     let filter = PeerFilter {
         chain_name,
@@ -53,7 +61,7 @@ pub async fn list_peers(
     let commit = find_commit(&peers).unwrap_or_default();
     let updated_at = find_updated_at(&peers).unwrap_or_default();
 
-    let resp = APIResponse {
+    let resp = PeerList {
         meta: Meta { commit, updated_at },
         result: PeerResult {
             seeds: filter_by_type(&peers, PeerType::Seed)
@@ -77,7 +85,7 @@ pub async fn list_peers(
 get,
 path = "/v1/{network}/{chain_name}/peers/seed_string",
 responses(
-(status = 200, description = "Seeds found successfully"),
+(status = 200, description = "Seeds found successfully", body = String),
 (status = 404, description = "Network or chain does not exist, or chain does not have any seeds"),
 ),
 params(
@@ -107,7 +115,7 @@ pub async fn seed_string(
 get,
 path = "/v1/{network}/{chain_name}/peers/persistent_peer_string",
 responses(
-(status = 200, description = "Peers found successfully"),
+(status = 200, description = "Peers found successfully", body = String),
 (status = 404, description = "Network or chain does not exist, or chain does not have any persistent peers"),
 ),
 params(

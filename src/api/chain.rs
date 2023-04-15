@@ -1,7 +1,9 @@
 use crate::api::{from_db_error, internal_error, APIError, APIResponse, Meta};
 use crate::db::chain;
 use axum::{extract::Path, extract::State, Json};
+use serde::Serialize;
 use sqlx::postgres::PgPool;
+use utoipa::ToSchema;
 
 /// Get chain's data
 #[utoipa::path(
@@ -71,12 +73,18 @@ pub async fn get_chain_asset_list(
     Ok(Json(resp))
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ChainList {
+    meta: Meta,
+    result: Vec<String>,
+}
+
 /// List chains by network
 #[utoipa::path(
 get,
 path = "/v1/{network}/chains",
 responses(
-(status = 200, description = "Chains found successfully"),
+(status = 200, description = "Chains found successfully", body = ChainList),
 (status = 404, description = "Network does not exist"),
 ),
 params(
@@ -87,13 +95,13 @@ tag = "Chains",
 pub async fn list_chains(
     State(pool): State<PgPool>,
     Path(network): Path<String>,
-) -> Result<Json<APIResponse<Vec<String>>>, APIError> {
+) -> Result<Json<ChainList>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
     let list = chain::list_chains(&mut conn, network.as_str())
         .await
         .map_err(from_db_error)?;
 
-    let resp = APIResponse {
+    let resp = ChainList {
         meta: Meta {
             commit: list.commit,
             updated_at: list.updated_at,
