@@ -11,6 +11,7 @@ mod api;
 mod db;
 mod hydrate;
 mod liveness;
+mod web;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -133,7 +134,10 @@ async fn run_server(port: u16, conns: u32, timeout: Duration) {
     let pool = connect_pool(conns, timeout).await;
 
     let api_routes = api::router::new();
-    let app = Router::new().merge(api_routes).with_state(pool);
+    let app = Router::new()
+        .merge(api_routes)
+        .with_state(pool)
+        .merge(web::static_web());
 
     let addr = format!("0.0.0.0:{}", port);
     println!("Server listening on {}", addr);
