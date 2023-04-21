@@ -268,7 +268,7 @@ mod tests {
         let mut conn = pool.acquire().await?;
         let found = all_recent_peers(&mut conn).await?;
 
-        assert_eq!(found.len(), 2);
+        assert_eq!(found.len(), 5);
 
         Ok(())
     }
@@ -306,6 +306,7 @@ mod tests {
         assert_eq!("efg987@public-persistent.com:26656", found[1].address);
 
         filter.include_all = false;
+        let found = filter_recent_peers(&mut conn, &filter).await?;
         assert_eq!(found.len(), 1);
 
         Ok(())
