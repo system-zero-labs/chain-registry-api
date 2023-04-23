@@ -64,8 +64,10 @@
         </div>
     </div>
 </div>
+
 <!--Main-->
 <div class="card card-body shadow-xl mx-3 mx-md-4 mt-n6">
+
     <!--Audience-->
     <section class="pt-3 pb-4" id="count-stats">
         <div class="container">
@@ -185,8 +187,16 @@
                 <div class="col-md-7 my-5">
                     <pre class="highlight language-bash"># Discover mainnets
 curl -s https://chainregistry.xyz/v1/mainnet/chains</pre>
-                    <pre class="highlight language-bash"># Get info about Cosmos Hub
+                    <pre class="highlight language-bash"># Discover Testnets
+curl -s https://chainregistry.xyz/v1/testnet/chains</pre>
+                    <pre class="highlight language-bash"># Get chain data for Cosmos Hub
 curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub</pre>
+                    <pre class="highlight language-bash"># View the Hub's live peers and seeds
+curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers</pre>
+                    <pre class="highlight language-bash"># Insert live peers into config. If using Mac, install and use gnu-sed.
+sed -i 's/\(persistent_peers = "\).*\("\)/\1'$(curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers/peer_string)'\2/' config.toml</pre>
+                    <pre class="highlight language-bash"># Insert live seeds into config. If using Mac, install and use gnu-sed.
+sed -i 's/\(seeds = "\).*\("\)/\1'$(curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers/seed_string)'\2/' config.toml</pre>
                     <a href="/v1-docs" class="btn btn-lg bg-gradient-primary">Try It Out</a>
                 </div>
             </div>
@@ -216,7 +226,7 @@ curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub</pre>
     <section class="my-3 py-3">
         <div class="container">
             <div class="section text-center">
-                <h2 class="title">Sponsors</h2>
+                <h2 class="title">💰Sponsors</h2>
             </div>
             <div class="row justify-content-center my-3">
                 <h4 class="text-center text-secondary"><a href="https://www.buymeacoffee.com/dnix">Buy me a coffee</a>
