@@ -15,6 +15,9 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <!-- Material Kit CSS -->
     <link href="assets/css/material-kit.css?v=3.0.0" rel="stylesheet"/>
+    <link rel="stylesheet"
+          href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 </head>
 
 <body>
@@ -57,7 +60,7 @@
             <div class="col-md-8 mx-auto">
                 <div class="text-center">
                     <h1 class="text-white">An API for the Cosmos Chain Registry</h1>
-                    <h3 class="text-white">Discover, Query, Integrate and Automate.</h3>
+                    <h3 class="text-white">Quickly find information about Cosmos blockchains through a simple REST API.</h3>
                     <h3 class="text-white">Free and Open Source.</h3>
                 </div>
             </div>
@@ -178,26 +181,25 @@
     <section class="my-3 py-3">
         <div class="container">
             <div class="section text-center">
-                <h2 class="title">Get Started Now</h2>
+                <h2 class="title">Get Started</h2>
+                <a href="/v1-docs" class="btn btn-md bg-gradient-info">Try It Now</a>
             </div>
-            <div class="row">
-                <div class="col-md-5 my-5">
-                    <img src="assets/img/space_network1.png" class="card-img">
+            <div class="row justify-content-center">
+                <div class="col-md-6 my-5">
+                    <h5 class="font-weight-bolder">Discover mainnets</h5>
+                    <pre class="highlight language-bash">curl -s https://chainregistry.xyz/v1/mainnet/chains</pre>
+                    <h5 class="font-weight-bolder">Discover testnets</h5>
+                    <pre class="highlight language-bash">curl -s https://chainregistry.xyz/v1/testnet/chains</pre>
+                    <h5 class="font-weight-bolder">Get chain data for Comsos Hub</h5>
+                    <pre class="highlight language-bash">curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub</pre>
                 </div>
-                <div class="col-md-7 my-5">
-                    <pre class="highlight language-bash"># Discover mainnets
-curl -s https://chainregistry.xyz/v1/mainnet/chains</pre>
-                    <pre class="highlight language-bash"># Discover Testnets
-curl -s https://chainregistry.xyz/v1/testnet/chains</pre>
-                    <pre class="highlight language-bash"># Get chain data for Cosmos Hub
-curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub</pre>
-                    <pre class="highlight language-bash"># View the Hub's live peers and seeds
-curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers</pre>
-                    <pre class="highlight language-bash"># Insert live peers into config. If using Mac, install and use gnu-sed.
-sed -i 's/\(persistent_peers = "\).*\("\)/\1'$(curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers/peer_string)'\2/' config.toml</pre>
-                    <pre class="highlight language-bash"># Insert live seeds into config. If using Mac, install and use gnu-sed.
-sed -i 's/\(seeds = "\).*\("\)/\1'$(curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers/seed_string)'\2/' config.toml</pre>
-                    <a href="/v1-docs" class="btn btn-lg bg-gradient-primary">Try It Out</a>
+                <div class="col-md-6 my-5">
+                    <h5 class="font-weight-bolder">View the live peers and seeds</h5>
+                    <pre class="highlight language-bash">curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers</pre>
+                    <h5 class="font-weight-bolder">Insert live peers into config.toml</h5>
+                    <pre class="highlight language-bash">sed -i 's/\(persistent_peers = "\).*\("\)/\1'$(curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub/peers/peer_string)'\2/' config.toml</pre>
+                    <h5 class="font-weight-bolder">Find all RPC endpoints</h5>
+                    <pre class="highlight language-bash">curl https://chainregistry.xyz/v1/mainnet/cosmoshub | jq -r '.result.apis.rpc[].address'</pre>
                 </div>
             </div>
         </div>
@@ -228,9 +230,10 @@ sed -i 's/\(seeds = "\).*\("\)/\1'$(curl -s https://chainregistry.xyz/v1/mainnet
             <div class="section text-center">
                 <h2 class="title">💰Sponsors</h2>
             </div>
-            <div class="row justify-content-center my-3">
-                <h4 class="text-center text-secondary"><a href="https://www.buymeacoffee.com/dnix">Buy me a coffee</a>
+            <div class="row justify-content-center text-center my-3">
+                <h4 class="text-secondary"><a href="https://www.buymeacoffee.com/dnix">Buy me a coffee</a>
                     to have your name and logo appear here!</h4>
+                <p>Your patronage helps pay for hosting costs and future features and bug fixes.</p>
             </div>
         </div>
     </section>
