@@ -130,7 +130,7 @@
                                 <i class="material-icons text-gradient text-primary text-3xl">add_task</i>
                                 <h5 class="font-weight-bolder mt-3">Peer and Seed Liveness</h5>
                                 <p class="pe-3">Never worry about connecting to an offline peer again. We frequently
-                                    check for peer and seed liveness. By default, the APIs peer endpoints only return
+                                    check for peer and seed liveness. By default, peer endpoints only return
                                     live peers.</p>
                             </div>
                         </div>
@@ -179,14 +179,14 @@
                 <h2 class="title">Get Started Now</h2>
             </div>
             <div class="row">
-                <div class="col-md-6">
-
+                <div class="col-md-5 my-5">
+                    <img src="assets/img/space_network1.png" class="card-img">
                 </div>
-                <div class="col-md-6">
-                </div>
-            </div>
-            <div class="row justify-content-center text-center my-sm-3">
-                <div class="col-lg-6">
+                <div class="col-md-7 my-5">
+                    <pre class="highlight language-bash"># Discover mainnets
+curl -s https://chainregistry.xyz/v1/mainnet/chains</pre>
+                    <pre class="highlight language-bash"># Get info about Cosmos Hub
+curl -s https://chainregistry.xyz/v1/mainnet/cosmoshub</pre>
                     <a href="/v1-docs" class="btn btn-lg bg-gradient-primary">Try It Out</a>
                 </div>
             </div>
@@ -197,17 +197,17 @@
     <section class="my-3 py-3">
         <div class="container">
             <div class="section text-center">
-                <h2 class="title">OpenAPI</h2>
+                <h2 class="title">Generate Code with OpenAPI</h2>
             </div>
         </div>
         <div class="row justify-content-center">
-            <div class="col-md-6">
-                <h5 class="text-info my-3">Install openapi-generator-cli</h5>
-                <code class="language-shell"
-                      data-lang="bash">$ npm install @openapitools/openapi-generator-cli -g</code>
-                <h5 class="text-info my-3">Generate code</h5>
-                <code class="language-shell">$ openapi-generator-cli generate -i https://chainregistry.xyz/v1-api-docs/openapi.json -g typescript-fetch -o /path/to/output</code>
-                <p class="my-2"><a href="https://openapi-generator.tech" target="_blank">See official documentation.</a></p>
+            <div class="col-md-8">
+                <h5 class="text-info my-3">Install the cli</h5>
+                <pre class="highlight language-bash">npm install @openapitools/openapi-generator-cli -g</pre>
+                <h5 class="text-info my-3">Generate</h5>
+                <pre class="highlight language-bash">openapi-generator-cli generate -i https://chainregistry.xyz/v1-api-docs/openapi.json -g typescript-fetch -o /path/to/output</pre>
+                <p class="my-2"><a href="https://openapi-generator.tech" target="_blank">See official OpenAPI generator
+                    documentation.</a></p>
             </div>
         </div>
     </section>
@@ -218,9 +218,17 @@
             <div class="section text-center">
                 <h2 class="title">Sponsors</h2>
             </div>
+            <div class="row justify-content-center my-3">
+                <h4 class="text-center text-secondary"><a href="https://www.buymeacoffee.com/dnix">Buy me a coffee</a>
+                    to have your name and logo appear here!</h4>
+            </div>
         </div>
     </section>
 
+    <!--Buy me a coffee widget-->
+    <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
+            data-id="dnix" data-description="Support me on Buy me a coffee!" data-message="Buy me a coffee"
+            data-color="#fb8c00" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
     <!--End-->
 </div>
 
