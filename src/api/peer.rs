@@ -113,7 +113,7 @@ pub async fn seed_string(
 /// it is excluded from this response by default.
 #[utoipa::path(
 get,
-path = "/v1/{network}/{chain_name}/peers/persistent_peer_string",
+path = "/v1/{network}/{chain_name}/peers/peer_string",
 responses(
 (status = 200, description = "Peers found successfully", body = String),
 (status = 404, description = "Network or chain does not exist, or chain does not have any persistent peers"),

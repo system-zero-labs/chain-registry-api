@@ -28,7 +28,7 @@ pub fn new() -> Router<sqlx::postgres::PgPool> {
         .route("/:network/:chain_name/peers", get(list_peers))
         .route("/:network/:chain_name/peers/seed_string", get(seed_string))
         .route(
-            "/:network/:chain_name/peers/persistent_peer_string",
+            "/:network/:chain_name/peers/peer_string",
             get(persistent_peer_string),
         );
 
