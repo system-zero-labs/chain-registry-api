@@ -83,7 +83,7 @@ enum Sub {
         #[arg(
             long,
             help = "Postgres connection timeout in seconds",
-            default_value = "120"
+            default_value = "600"
         )]
         pg_timeout_sec: u64,
     },
