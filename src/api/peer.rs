@@ -14,9 +14,16 @@ pub struct PeerList {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct Peer {
+    address: String,
+    last_liveness_check: chrono::DateTime<chrono::Utc>,
+    is_alive: bool,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PeerResult {
-    pub seeds: Vec<String>,
-    pub persistent: Vec<String>,
+    pub seeds: Vec<Peer>,
+    pub persistent: Vec<Peer>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,12 +72,20 @@ pub async fn list_peers(
         meta: Meta { commit, updated_at },
         result: PeerResult {
             seeds: filter_by_type(&peers, PeerType::Seed)
-                .iter()
-                .map(|p| p.address.clone())
+                .into_iter()
+                .map(|p| Peer {
+                    address: p.address,
+                    last_liveness_check: p.updated_at,
+                    is_alive: p.is_alive,
+                })
                 .collect(),
             persistent: filter_by_type(&peers, PeerType::Persistent)
-                .iter()
-                .map(|p| p.address.clone())
+                .into_iter()
+                .map(|p| Peer {
+                    address: p.address,
+                    last_liveness_check: p.updated_at,
+                    is_alive: p.is_alive,
+                })
                 .collect(),
         },
     };
@@ -100,12 +115,18 @@ pub async fn seed_string(
     Path((network, chain_name)): Path<(String, String)>,
     params: Option<Query<PeerParams>>,
 ) -> Result<String, APIError> {
-    let resp = list_peers(State(pool), Path((network, chain_name)), params)
+    let seeds = list_peers(State(pool), Path((network, chain_name)), params)
         .await?
         .0
         .result;
 
-    Ok(resp.seeds.join(","))
+    let seeds = seeds
+        .seeds
+        .into_iter()
+        .map(|p| p.address)
+        .collect::<Vec<String>>();
+
+    Ok(seeds.join(","))
 }
 
 /// Get a chain's live persistent peers as a comma-separated string for use in config.toml.
@@ -130,10 +151,16 @@ pub async fn persistent_peer_string(
     Path((network, chain_name)): Path<(String, String)>,
     params: Option<Query<PeerParams>>,
 ) -> Result<String, APIError> {
-    let resp = list_peers(State(pool), Path((network, chain_name)), params)
+    let peers = list_peers(State(pool), Path((network, chain_name)), params)
         .await?
         .0
         .result;
 
-    Ok(resp.persistent.join(","))
+    let peers = peers
+        .persistent
+        .into_iter()
+        .map(|p| p.address)
+        .collect::<Vec<String>>();
+
+    Ok(peers.join(","))
 }

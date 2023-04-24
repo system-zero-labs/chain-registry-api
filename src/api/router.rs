@@ -3,20 +3,22 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::api::chain::{get_chain_asset_list, get_chain_data, list_chains, ChainList};
-use crate::api::peer::{list_peers, persistent_peer_string, seed_string, PeerList, PeerResult};
+use crate::api::peer::{
+    list_peers, persistent_peer_string, seed_string, Peer, PeerList, PeerResult,
+};
 use crate::api::Meta;
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        crate::api::chain::list_chains,
-        crate::api::chain::get_chain_data,
         crate::api::chain::get_chain_asset_list,
+        crate::api::chain::get_chain_data,
+        crate::api::chain::list_chains,
         crate::api::peer::list_peers,
-        crate::api::peer::seed_string,
         crate::api::peer::persistent_peer_string,
+        crate::api::peer::seed_string,
     ),
-    components(schemas(PeerList, PeerResult, Meta, ChainList))
+    components(schemas(Peer, PeerList, PeerResult, Meta, ChainList))
 )]
 struct ApiDoc;
 
