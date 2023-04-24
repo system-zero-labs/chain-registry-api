@@ -4,8 +4,10 @@ use clap::{Parser, Subcommand};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::Acquire;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
+use tokio::sync::Semaphore;
 
 mod api;
 mod db;
@@ -261,40 +263,40 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
 
     println!("Checking liveness for {} peers...", peers.len());
 
-    let pool = std::sync::Arc::new(pool);
+    let pool = Arc::new(pool);
+    let sem = Arc::new(Semaphore::new(max_conns as usize));
+    let mut handles = vec![];
 
-    let mut iter = peers.into_iter();
-
-    while iter.len() > 0 {
-        let mut tasks = vec![];
-        for peer in iter.by_ref().take(max_conns as usize) {
-            let clone = std::sync::Arc::clone(&pool);
-            tasks.push(tokio::spawn(async move {
-                let mut conn = match clone.acquire().await {
-                    Ok(conn) => conn,
-                    Err(err) => {
-                        println!("Failed to acquire connection from pool: {:?}", err);
-                        return;
-                    }
-                };
-
-                let check_liveness = |addr: &str| -> anyhow::Result<()> {
-                    println!("Checking liveness for peer {}", addr);
-                    liveness::tcp_check_liveness(addr, Duration::from_secs(3))
-                };
-
-                match db::peer::update_liveness(&mut conn, &peer, check_liveness).await {
-                    Ok(_) => {}
-                    Err(err) => println!("Failed to update liveness for {:?}: {:?}", peer, err),
+    for peer in peers {
+        let pool = std::sync::Arc::clone(&pool);
+        let permit = sem.clone().acquire_owned().await.unwrap();
+        handles.push(tokio::spawn(async move {
+            let mut conn = match pool.acquire().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    println!("Failed to acquire connection from pool: {:?}", err);
+                    drop(permit);
+                    return;
                 }
-            }));
-        }
+            };
 
-        for task in tasks {
-            match task.await {
+            let check_liveness = |addr: &str| -> anyhow::Result<()> {
+                println!("Checking peer liveness for {}", addr);
+                liveness::tcp_check_liveness(addr, Duration::from_secs(5))
+            };
+
+            match db::peer::update_liveness(&mut conn, &peer, check_liveness).await {
                 Ok(_) => {}
-                Err(err) => println!("Task failed: {:?}", err),
-            }
+                Err(err) => println!("Failed to update liveness for {:?}: {:?}", peer, err),
+            };
+            drop(permit);
+        }));
+    }
+
+    for handle in handles {
+        match handle.await {
+            Ok(_) => {}
+            Err(err) => println!("Task failed: {:?}", err),
         }
     }
 }
