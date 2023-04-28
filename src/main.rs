@@ -120,7 +120,11 @@ async fn connect_pool(max_conns: u32, timeout: Duration) -> PgPool {
     let pool = PgPoolOptions::new()
         .max_connections(max_conns)
         .acquire_timeout(timeout)
-        .connect(std::env::var("DATABASE_URL").unwrap().as_str())
+        .connect(
+            std::env::var("DATABASE_URL")
+                .expect("DATABASE_URL missing")
+                .as_str(),
+        )
         .await
         .expect("Failed to connect to database");
 
