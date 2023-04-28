@@ -15,3 +15,6 @@ target/
 
 # When testing locally, often used as the clone directory
 tmp-chain-registry
+
+# Testing openapi-generator
+/openapitools.json
