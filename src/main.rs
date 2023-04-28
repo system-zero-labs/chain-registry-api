@@ -303,4 +303,6 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
             Err(err) => println!("Task failed: {:?}", err),
         }
     }
+
+    println!("Liveness check complete.");
 }
