@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: chain-registry-api-server
+    env: rust
+    repo: https://github.com/system-zero-labs/chain-registry-api
+    plan: free
+    region: oregon
+    branch: main
+    numInstances: 1
+#    healthCheckPath: /v1/mainnet/chains # TODO: add me
+#    scaling:
+#      minInstances: 1
+#      maxInstances: 1
+    buildCommand: cargo install --release
+    startCommand: cargo run --release serve
+    domains:
+      - chainregistry.xyz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: chan_reg_prod
+          property: connectionString
+
+  - type: cron
+    name: chain-registry-hydrate
+    env: rust
+    schedule: "*/5 * * * *"
+    buildCommand: cargo install --release
+    startCommand: cargo run --release hydrate
+    repo: https://github.com/system-zero-labs/chain-registry-api
+
+  - type: cron
+    name: chain-registry-liveness # TODO: refactor to a background worker
+    env: rust
+    schedule: "*/5 * * * *"
+    buildCommand: cargo install --release
+    startCommand: cargo run --release liveness
+    repo: https://github.com/system-zero-labs/chain-registry-api
+
+databases:
+  - name: chain_reg_prod
+    plan: starter
+    databaseName: chain_reg_prod
+    region: oregon
+    user: chain_reg_admin
+    ipAllowList: [] # only allow internal connections
