@@ -11,7 +11,7 @@ services:
 #    scaling:
 #      minInstances: 1
 #      maxInstances: 1
-    buildCommand: cargo install --release
+    buildCommand: cargo build --release
     startCommand: cargo run --release serve
     domains:
       - chainregistry.xyz
@@ -25,7 +25,7 @@ services:
     name: chain-registry-hydrate
     env: rust
     schedule: "*/5 * * * *"
-    buildCommand: cargo install --release
+    buildCommand: cargo build --release
     startCommand: cargo run --release hydrate
     repo: https://github.com/system-zero-labs/chain-registry-api
 
@@ -33,7 +33,7 @@ services:
     name: chain-registry-liveness # TODO: refactor to a background worker
     env: rust
     schedule: "*/5 * * * *"
-    buildCommand: cargo install --release
+    buildCommand: cargo build --release
     startCommand: cargo run --release liveness
     repo: https://github.com/system-zero-labs/chain-registry-api
 
