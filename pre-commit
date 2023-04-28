@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Copy this to .git/hooks
+
+current_branch=$(git symbolic-ref --short HEAD)
+
+if [ "$current_branch" = "main" ]
+then
+    echo "You cannot commit directly to the main branch."
+    exit 1
+fi
+
