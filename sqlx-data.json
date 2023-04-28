@@ -1,0 +1,251 @@
+{
+  "db": "PostgreSQL",
+  "2c738397db5a373de318419f429444b3b6e96eb770ba3bae6b74caf0ba6ef2a2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Jsonb",
+          "Jsonb",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO chain (name, network, chain_data, asset_data, commit)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (name, network, commit) DO UPDATE SET commit = $5\n        RETURNING id\n        "
+  },
+  "76cefcbc3eb07498d84cdd4a54fcb84c8344088059765db79f2af9981a4536d2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO peer (chain_id_fk, address, type)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = peer.is_alive\n        "
+  },
+  "89952a084d238f696a23b3a406f9bb7948e83f268c9652aa99a42eed3f0e0063": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n        UPDATE peer SET is_alive = $1 WHERE id = $2\n        "
+  },
+  "acf87b87f0f471c98f360d2c69de3da1b39a4a641c730945f230a74027afabca": {
+    "describe": {
+      "columns": [
+        {
+          "name": "commit",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "names",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        SELECT commit, \n        array_agg(name order by name) as names, \n        MAX(updated_at) as updated_at \n        FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;\n        "
+  },
+  "e928fccca7301afed532322b81cd6b7f6357a652311f8119aa56f0a5336fa21e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "commit",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "chain_data",
+          "ordinal": 2,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "asset_data",
+          "ordinal": 3,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        SELECT commit, updated_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1\n        "
+  },
+  "edf2e69e5a87eb580c15ee584b1e14bccc4d3e24ebbd914888c52ad8d34f6bc3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "address",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "peer_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_alive",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "commit",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        WITH recent_chain AS (\n            SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1\n        )\n        SELECT peer.id, peer.address, peer.type as peer_type, peer.is_alive, chain.commit, peer.updated_at\n        FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk \n        WHERE chain.commit IN (SELECT commit FROM recent_chain) AND\n        chain.name = $1 AND \n        chain.network = $2 \n        "
+  },
+  "f0f667f27cfe8c1169ad36fe9215ca149b95b0a065b4d5f2fa5cb7f8e33217aa": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "address",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "peer_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "commit",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_alive",
+          "ordinal": 4,
+          "type_info": "Bool"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        WITH recent_chain AS (\n            SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1\n        )\n        SELECT peer.id, address, peer.type as peer_type, chain.commit, peer.is_alive, peer.updated_at\n        FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)\n        "
+  },
+  "f3a8700dbd7c7a6315b23d7c492e48c9790103495a425123545082d80607fc97": {
+    "describe": {
+      "columns": [
+        {
+          "name": "node_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "address",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n        select \n        jsonb_array_elements(chain_data->'peers'->$1)->>'id' as node_id, \n        jsonb_array_elements(chain_data->'peers'->$1)->>'address' as address\n        from chain where id = $2\n        "
+  }
+}
