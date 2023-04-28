@@ -37,7 +37,7 @@ services:
   - type: cron
     name: chain-reg-api-liveness # TODO: eventually refactor to a background worker
     env: rust
-    schedule: "*/5 * * * *"
+    schedule: "*/6 * * * *"
     buildCommand: cargo build --release
     startCommand: cargo run --release liveness
     repo: https://github.com/system-zero-labs/chain-registry-api
