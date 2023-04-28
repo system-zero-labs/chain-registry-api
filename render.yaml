@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: chain-registry-api-server
+    name: chain-reg-api-server
     env: rust
     repo: https://github.com/system-zero-labs/chain-registry-api
     plan: free
@@ -18,11 +18,11 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: chain-reg-prod
+          name: chain-reg-api-db
           property: connectionString
 
   - type: cron
-    name: chain-registry-hydrate
+    name: chain-reg-api-hydrate
     env: rust
     schedule: "*/5 * * * *"
     buildCommand: cargo build --release
@@ -31,11 +31,11 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: chain-reg-prod
+          name: chain-reg-api-db
           property: connectionString
 
   - type: cron
-    name: chain-registry-liveness # TODO: refactor to a background worker
+    name: chain-reg-api-liveness # TODO: eventually refactor to a background worker
     env: rust
     schedule: "*/5 * * * *"
     buildCommand: cargo build --release
@@ -44,11 +44,11 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: chain-reg-prod
+          name: chain-reg-api-db
           property: connectionString
 
 databases:
-  - name: chain-reg-prod
+  - name: chain-reg-api-db
     plan: starter
     databaseName: chain_reg_prod
     region: oregon
