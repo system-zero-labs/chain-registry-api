@@ -7,7 +7,8 @@ services:
     region: oregon
     branch: main
     numInstances: 1
-    healthCheckPath: /v1/mainnet/chains
+    # TODO: runs on port 10000 such as chainregistry.xyz:10000/v1/mainnet/chains
+#    healthCheckPath: /v1/mainnet/chains
 #    scaling:
 #      minInstances: 1
 #      maxInstances: 1
