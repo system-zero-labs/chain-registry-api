@@ -7,7 +7,7 @@ services:
     region: oregon
     branch: main
     numInstances: 1
-#    healthCheckPath: /v1/mainnet/chains # TODO: add me
+    healthCheckPath: /v1/mainnet/chains
 #    scaling:
 #      minInstances: 1
 #      maxInstances: 1
@@ -26,20 +26,8 @@ services:
     env: rust
     schedule: "*/5 * * * *"
     buildCommand: cargo build --release
-    startCommand: cargo run --release hydrate
-    repo: https://github.com/system-zero-labs/chain-registry-api
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: chain-reg-api-db
-          property: connectionString
-
-  - type: cron
-    name: chain-reg-api-liveness # TODO: eventually refactor to a background worker
-    env: rust
-    schedule: "*/5 * * * *"
-    buildCommand: cargo build --release
-    startCommand: cargo run --release liveness
+    # TODO: eventually refactor liveness to a background worker
+    startCommand: cargo run --release hydrate && cargo run --release liveness
     repo: https://github.com/system-zero-labs/chain-registry-api
     envVars:
       - key: DATABASE_URL
