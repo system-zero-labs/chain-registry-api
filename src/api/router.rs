@@ -36,6 +36,13 @@ pub fn new() -> Router<sqlx::postgres::PgPool> {
 
     let mut doc = ApiDoc::openapi();
     doc.info.title = String::from("Chain Registry API");
+    let license = utoipa::openapi::LicenseBuilder::new()
+        .name("MIT License")
+        .url(Some(
+            "https://github.com/system-zero-labs/chain-registry-api/blob/main/LICENSE".to_string(),
+        ))
+        .build();
+    doc.info.license = Some(license);
 
     Router::new()
         .merge(SwaggerUi::new("/v1-docs").url("/v1-api-docs/openapi.json", doc))
