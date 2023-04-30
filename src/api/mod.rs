@@ -13,6 +13,7 @@ pub(crate) mod router;
 
 #[derive(Debug, Serialize, ToSchema)]
 struct Meta {
+    #[schema(example = "last fetched commit hash from https://github.com/cosmos/chain-registry")]
     commit: String,
     updated_at: chrono::DateTime<chrono::Utc>,
 }

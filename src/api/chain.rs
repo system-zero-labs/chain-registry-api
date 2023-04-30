@@ -5,7 +5,11 @@ use serde::Serialize;
 use sqlx::postgres::PgPool;
 use utoipa::ToSchema;
 
-/// Get chain's data
+/// Get chain's data.
+///
+/// Fetches all metadata for a chain, such as the binary, bech32 prefix, genesis file, peers, rpc endpoints, etc.
+/// Currently, this OpenAPI spec does not include a schema because it may change without warning.
+/// The response should match the schema at: https://github.com/cosmos/chain-registry/blob/master/chain.schema.json.
 #[utoipa::path(
 get,
 path = "/v1/{network}/{chain_name}",
@@ -39,7 +43,11 @@ pub async fn get_chain_data(
     Ok(Json(resp))
 }
 
-/// Get chain's assetlist
+/// Get chain's assetlist.
+///
+/// Asset lists allow frontends and other UIs to fetch metadata associated with Cosmos SDK denoms, especially for assets sent over IBC.
+/// Currently, this OpenAPI spec does not include a schema because it may change without warning.
+/// The response should match the schema at: https://github.com/cosmos/chain-registry/blob/master/assetlist.schema.json
 #[utoipa::path(
 get,
 path = "/v1/{network}/{chain_name}/assetlist",
