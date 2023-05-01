@@ -84,7 +84,13 @@ pub async fn get_chain_asset_list(
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ChainList {
     meta: Meta,
-    result: Vec<String>,
+    result: Vec<ChainListItem>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ChainListItem {
+    name: String,
+    path: String,
 }
 
 /// List chains by network
@@ -109,12 +115,21 @@ pub async fn list_chains(
         .await
         .map_err(from_db_error)?;
 
+    let chain_list = list
+        .names
+        .into_iter()
+        .map(|chain| ChainListItem {
+            name: chain.clone(),
+            path: format!("/v1/{}/{}", network, chain),
+        })
+        .collect();
+
     let resp = ChainList {
         meta: Meta {
             commit: list.commit,
             updated_at: list.updated_at,
         },
-        result: list.names,
+        result: chain_list,
     };
     Ok(Json(resp))
 }

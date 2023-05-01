@@ -2,7 +2,9 @@ use axum::{routing::get, Router};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::api::chain::{get_chain_asset_list, get_chain_data, list_chains, ChainList};
+use crate::api::chain::{
+    get_chain_asset_list, get_chain_data, list_chains, ChainList, ChainListItem,
+};
 use crate::api::peer::{
     list_peers, persistent_peer_string, seed_string, Peer, PeerList, PeerResult,
 };
@@ -18,7 +20,7 @@ use crate::api::Meta;
         crate::api::peer::persistent_peer_string,
         crate::api::peer::seed_string,
     ),
-    components(schemas(Peer, PeerList, PeerResult, Meta, ChainList))
+    components(schemas(Peer, PeerList, PeerResult, Meta, ChainList, ChainListItem))
 )]
 struct ApiDoc;
 
