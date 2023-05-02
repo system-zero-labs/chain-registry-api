@@ -11,18 +11,32 @@ See the [official marketing page](https://chainregistry.xyz).
 In no particular order:
 
 - [x] Liveness for peers
+- [ ] Add node id to peer endpoints, so user does not have to parse it from address.
 - [ ] Liveness for RPC endpoints
 - [ ] Liveness for LCD endpoints
 - [ ] Liveness for grpc endpoints
 - [ ] Capture uptime metrics for peers and endpoints
 - [ ] Capture data such as earliest block height for endpoints
+
+## Ideas
+
+These may or may not happen.
+
 - [ ] Client command line interface
+- [ ] Discover and track peers outside the chain registry
+- [ ] Discover and track endpoints outside the chain registry 
 
 # FAQ
 
+## Is this a Strangelove project?
+
+No. Although I currently work for [Strangelove](https://github.com/strangelove-ventures), this project is created,
+maintained, and hosted independently by [David Nix](https://twitter.com/davidnix_).
+
 ## Why not use the Chain Registry itself or explorers?
 
-I wanted something programmatic that I could query easily. Digging through some web UI isn't my idea of fun.
+I wanted something programmatic that I could query easily. Digging through some web UI or a Github repo isn't my idea of
+fun.
 An API lets you write scripts and programs to do the digging for you.
 
 ## What if/when the Chain Registry repo is deprecated and lives on chain?
