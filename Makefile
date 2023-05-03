@@ -27,7 +27,7 @@ psql:
 
 .PHONY: prepare
 prepare: ## Prepare sqlx offline data
-	cargo sqlx prepare
+	cargo sqlx prepare -- --tests
 
 .PHONY: watch
 watch: prepare ## Watch for changes and run cargo
