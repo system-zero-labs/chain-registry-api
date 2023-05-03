@@ -193,6 +193,24 @@
     },
     "query": "\n        WITH recent AS (SELECT commit, max(created_at) AS created_at\n                FROM chain\n                GROUP BY commit\n                ORDER BY created_at DESC\n                LIMIT $1)\n        DELETE FROM chain WHERE commit NOT IN (SELECT commit from recent)\n        "
   },
+  "d633c8d58e337d2ddad17f66d67b42e71a436091e71ef0dc0b661c37bb090274": {
+    "describe": {
+      "columns": [
+        {
+          "name": "commit",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT commit FROM chain"
+  },
   "e928fccca7301afed532322b81cd6b7f6357a652311f8119aa56f0a5336fa21e": {
     "describe": {
       "columns": [

@@ -214,6 +214,13 @@ async fn hydrate_chain_registry(
         insert_peers(&mut tx, chain_id, PeerType::Persistent).await;
     }
 
+    let keep = 3;
+    println!("Truncating old chains, keeping {} most recent...", keep);
+    match db::chain::truncate_old_chains(&mut tx, keep).await {
+        Ok(_) => println!("Truncated old chains."),
+        Err(err) => println!("Failed to truncate chains: {:?}", err),
+    }
+
     match tx.commit().await {
         Ok(_) => println!("Hydration complete."),
         Err(err) => println!("Failed to commit transaction: {:?}", err),
