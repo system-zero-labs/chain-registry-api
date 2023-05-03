@@ -30,5 +30,5 @@ prepare: ## Prepare sqlx offline data
 	cargo sqlx prepare
 
 .PHONY: watch
-watch: ## Watch for changes and run cargo
+watch: prepare ## Watch for changes and run cargo
 	cargo watch -x check
