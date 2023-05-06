@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
 use tokio::sync::Semaphore;
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 mod api;
 mod db;
@@ -93,9 +94,15 @@ enum Sub {
 
 #[tokio::main]
 async fn main() {
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy()
+        .add_directive("sqlx=error".parse().unwrap());
+
     tracing_subscriber::fmt()
-        .with_target(false)
-        .compact()
+        .with_target(true)
+        .with_env_filter(filter)
+        .with_line_number(true)
         .init();
 
     let cli = Args::parse();
