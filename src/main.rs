@@ -215,10 +215,9 @@ async fn hydrate_chain_registry(
     }
 
     let keep = 3;
-    println!("Truncating old chains, keeping {} most recent...", keep);
     match db::chain::truncate_old_chains(&mut tx, keep).await {
-        Ok(_) => println!("Truncated old chains."),
-        Err(err) => println!("Failed to truncate chains: {:?}", err),
+        Ok(_) => println!("Pruned old chains keeping {} most recent", keep),
+        Err(err) => println!("Failed to prune chains: {:?}", err),
     }
 
     match tx.commit().await {
