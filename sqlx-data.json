@@ -1,5 +1,65 @@
 {
   "db": "PostgreSQL",
+  "0e885e0585980d596364403941a42030c78e6b2503226a6be4f446470cc39544": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "network",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "chain_data",
+          "ordinal": 3,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "asset_data",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "commit",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT * FROM chain"
+  },
   "2c738397db5a373de318419f429444b3b6e96eb770ba3bae6b74caf0ba6ef2a2": {
     "describe": {
       "columns": [
@@ -51,6 +111,26 @@
     },
     "query": "\n        UPDATE peer SET is_alive = $1 WHERE id = $2\n        "
   },
+  "92299bb9d3b5e90ced8c68208783889f461aa22d0d284ff7aa3bb057ef5bb269": {
+    "describe": {
+      "columns": [
+        {
+          "name": "chain_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT chain_data->>'chain_id' as chain_id FROM chain WHERE id = $1"
+  },
   "acf87b87f0f471c98f360d2c69de3da1b39a4a641c730945f230a74027afabca": {
     "describe": {
       "columns": [
@@ -82,6 +162,54 @@
       }
     },
     "query": "\n        SELECT commit, \n        array_agg(name order by name) as names, \n        MAX(updated_at) as updated_at \n        FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;\n        "
+  },
+  "b89c3da5d70c26aa741c3a51f08ab7f6c743d29086ea2b51368d9718569d8f5f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "count",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT count(*) FROM chain"
+  },
+  "cd0802b912aa77f78105a585f0ff9c16b4bcf710cacc1cc0c65dfd561a0e507f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n        WITH recent AS (SELECT commit, max(created_at) AS created_at\n                FROM chain\n                GROUP BY commit\n                ORDER BY created_at DESC\n                LIMIT $1)\n        DELETE FROM chain WHERE commit NOT IN (SELECT commit from recent)\n        "
+  },
+  "d633c8d58e337d2ddad17f66d67b42e71a436091e71ef0dc0b661c37bb090274": {
+    "describe": {
+      "columns": [
+        {
+          "name": "commit",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT commit FROM chain"
   },
   "e928fccca7301afed532322b81cd6b7f6357a652311f8119aa56f0a5336fa21e": {
     "describe": {
@@ -220,6 +348,78 @@
       }
     },
     "query": "\n        WITH recent_chain AS (\n            SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1\n        )\n        SELECT peer.id, address, peer.type as peer_type, chain.commit, peer.is_alive, peer.updated_at\n        FROM peer INNER JOIN chain ON chain.id = peer.chain_id_fk WHERE chain.commit IN (SELECT commit FROM recent_chain)\n        "
+  },
+  "f2cbc1395d2e0b007926c36a3fefd859748c9012d5c259e493db68582c62e6b4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "is_alive",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT is_alive FROM peer WHERE id = 1\n            "
+  },
+  "f35645bf1924e1ecb4544f1d79c7c4cd810d3628fa19cd2b6bc3a7de518e9e6a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "type",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "address",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_alive",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "chain_id_fk",
+          "ordinal": 4,
+          "type_info": "Int8"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT * FROM peer\n            WHERE chain_id_fk = 1\n            LIMIT 1\n            "
   },
   "f3a8700dbd7c7a6315b23d7c492e48c9790103495a425123545082d80607fc97": {
     "describe": {

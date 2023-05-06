@@ -76,6 +76,24 @@ pub async fn find_chain(
         .await
 }
 
+pub async fn truncate_old_chains(executor: impl PgExecutor<'_>, keep: i64) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+        WITH recent AS (SELECT commit, max(created_at) AS created_at
+                FROM chain
+                GROUP BY commit
+                ORDER BY created_at DESC
+                LIMIT $1)
+        DELETE FROM chain WHERE commit NOT IN (SELECT commit from recent)
+        "#,
+        keep,
+    )
+    .execute(executor)
+    .await?;
+
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct ChainList {
     pub commit: String,
@@ -203,6 +221,23 @@ mod tests {
 
         assert_eq!(list.commit, "stubcommit");
         assert_eq!(list.names, vec!["cosmoshub"]);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("truncate_chains"))]
+    async fn test_truncate_old_chains(pool: PgPool) -> sqlx::Result<()> {
+        let mut conn = pool.acquire().await?;
+
+        truncate_old_chains(&mut conn, 2).await?;
+
+        let commits = sqlx::query!("SELECT commit FROM chain")
+            .fetch_all(&mut conn)
+            .await?;
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].commit, "commit3");
+        assert_eq!(commits[1].commit, "commit4");
 
         Ok(())
     }
