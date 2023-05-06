@@ -214,16 +214,15 @@ async fn hydrate_chain_registry(
         insert_peers(&mut tx, chain_id, PeerType::Persistent).await;
     }
 
-    let keep = 3;
+    let keep = 5;
     match db::chain::truncate_old_chains(&mut tx, keep).await {
-        Ok(_) => println!("Pruned old chains keeping {} most recent", keep),
+        Ok(_) => println!("Pruned old chains, kept {} most recent", keep),
         Err(err) => println!("Failed to prune chains: {:?}", err),
     }
 
-    match tx.commit().await {
-        Ok(_) => println!("Hydration complete."),
-        Err(err) => println!("Failed to commit transaction: {:?}", err),
-    }
+    tx.commit().await.unwrap_or_else(|err| {
+        println!("Failed to commit transaction: {:?}", err);
+    });
 
     if keep_clone {
         return;
@@ -236,6 +235,8 @@ async fn hydrate_chain_registry(
         }
         Err(err) => println!("Failed to remove clone dir: {:?}", err),
     }
+
+    println!("Hydrate complete!");
 }
 
 async fn insert_peers(
