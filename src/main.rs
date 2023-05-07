@@ -100,9 +100,9 @@ async fn main() {
         .add_directive("sqlx=error".parse().unwrap());
 
     tracing_subscriber::fmt()
-        .with_target(true)
+        .with_target(false)
         .with_env_filter(filter)
-        .with_line_number(true)
+        .with_line_number(false)
         .init();
 
     let cli = Args::parse();

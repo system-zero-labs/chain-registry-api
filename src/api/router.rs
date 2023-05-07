@@ -1,7 +1,3 @@
-use axum::{routing::get, Router};
-use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
-
 use crate::api::chain::{
     get_chain_asset_list, get_chain_data, list_chains, ChainList, ChainListItem,
 };
@@ -9,6 +5,11 @@ use crate::api::peer::{
     list_peers, persistent_peer_string, seed_string, Peer, PeerList, PeerResult,
 };
 use crate::api::Meta;
+use axum::{routing::get, Router};
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -34,6 +35,11 @@ pub fn new() -> Router<sqlx::postgres::PgPool> {
         .route(
             "/:network/:chain_name/peers/peer_string",
             get(persistent_peer_string),
+        )
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         );
 
     let mut doc = ApiDoc::openapi();
