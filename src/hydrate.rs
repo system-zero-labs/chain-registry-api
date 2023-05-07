@@ -35,7 +35,11 @@ pub fn shallow_clone(
 
     // Get commit hash
     let mut cmd = std::process::Command::new("git");
-    let output = cmd.arg("rev-parse").arg("HEAD").output()?;
+    let output = cmd
+        .current_dir(clone_dir)
+        .arg("rev-parse")
+        .arg("HEAD")
+        .output()?;
     if !output.status.success() {
         anyhow::bail!(
             "git rev-parse failed with status: {:?} stderr: {:?} stdout: {:?}",
