@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
 use tokio::sync::Semaphore;
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 mod api;
 mod db;
@@ -93,8 +94,18 @@ enum Sub {
 
 #[tokio::main]
 async fn main() {
-    let cli = Args::parse();
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy()
+        .add_directive("sqlx=error".parse().unwrap());
 
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_env_filter(filter)
+        .with_line_number(false)
+        .init();
+
+    let cli = Args::parse();
     match cli.sub {
         Sub::Serve {
             port,
@@ -146,7 +157,7 @@ async fn run_server(port: u16, conns: u32, timeout: Duration) {
         .merge(web::static_web());
 
     let addr = format!("0.0.0.0:{}", port);
-    println!("Server listening on {}", addr);
+    tracing::info!("Server listening on {}", addr);
     axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
@@ -161,7 +172,7 @@ async fn hydrate_chain_registry(
 ) {
     let clone_dir =
         path.unwrap_or_else(|| TempDir::new().unwrap().path().to_str().unwrap().to_string());
-    println!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
+    tracing::info!("Cloning {} {} into {}...", remote, git_ref, clone_dir);
     let repo = hydrate::shallow_clone(remote, git_ref, &clone_dir.clone().into())
         .expect("shallow clone failed");
 
@@ -172,7 +183,7 @@ async fn hydrate_chain_registry(
     // chain ids mutable array of i64
     let mut chain_ids: Vec<i64> = Vec::new();
 
-    println!("Inserting chains...");
+    tracing::info!("Inserting chains...");
 
     // Insert mainnet chains
     for chain in repo.mainnets {
@@ -187,7 +198,7 @@ async fn hydrate_chain_registry(
             Ok(id) => {
                 chain_ids.push(id);
             }
-            Err(err) => println!("Failed to save mainnet chain {:?}: {:?}", chain, err),
+            Err(err) => tracing::error!("Failed to save mainnet chain {:?}: {:?}", chain, err),
         }
     }
 
@@ -204,11 +215,11 @@ async fn hydrate_chain_registry(
             Ok(id) => {
                 chain_ids.push(id);
             }
-            Err(err) => println!("Failed to save testnet chain {:?}: {:?}", chain, err),
+            Err(err) => tracing::error!("Failed to save testnet chain {:?}: {:?}", chain, err),
         }
     }
 
-    println!("Inserting peers...");
+    tracing::info!("Inserting peers...");
     for chain_id in chain_ids {
         insert_peers(&mut tx, chain_id, PeerType::Seed).await;
         insert_peers(&mut tx, chain_id, PeerType::Persistent).await;
@@ -216,12 +227,12 @@ async fn hydrate_chain_registry(
 
     let keep = 5;
     match db::chain::truncate_old_chains(&mut tx, keep).await {
-        Ok(_) => println!("Pruned old chains, kept {} most recent", keep),
-        Err(err) => println!("Failed to prune chains: {:?}", err),
+        Ok(_) => tracing::info!("Pruned old chains, kept {} most recent", keep),
+        Err(err) => tracing::error!("Failed to prune chains: {:?}", err),
     }
 
     tx.commit().await.unwrap_or_else(|err| {
-        println!("Failed to commit transaction: {:?}", err);
+        tracing::error!("Failed to commit transaction: {:?}", err);
     });
 
     if keep_clone {
@@ -231,12 +242,12 @@ async fn hydrate_chain_registry(
     let path = Path::new(clone_dir.as_str());
     match std::fs::remove_dir_all(path) {
         Ok(_) => {
-            println!("Removed clone dir {}", clone_dir)
+            tracing::info!("Removed clone dir {}", clone_dir)
         }
-        Err(err) => println!("Failed to remove clone dir: {:?}", err),
+        Err(err) => tracing::error!("Failed to remove clone dir: {:?}", err),
     }
 
-    println!("Hydrate complete!");
+    tracing::info!("Hydrate complete!");
 }
 
 async fn insert_peers(
@@ -247,7 +258,7 @@ async fn insert_peers(
     let peers = match db::peer::find_peers(&mut *tx, chain_id, peer_type.clone()).await {
         Ok(peers) => peers,
         Err(err) => {
-            println!("Failed to find peers for chain {}: {:?}", chain_id, err);
+            tracing::error!("Failed to find peers for chain {}: {:?}", chain_id, err);
             return;
         }
     };
@@ -255,7 +266,7 @@ async fn insert_peers(
     for peer in peers {
         match db::peer::insert_peer(&mut *tx, chain_id, peer_type.clone(), peer.clone()).await {
             Ok(_) => {}
-            Err(err) => println!("Failed to insert peer {:?}: {:?}", peer, err),
+            Err(err) => tracing::error!("Failed to insert peer {:?}: {:?}", peer, err),
         }
     }
 }
@@ -272,7 +283,7 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
         .await
         .expect("Failed to get recent peers");
 
-    println!("Checking liveness for {} peers...", peers.len());
+    tracing::info!("Checking liveness for {} peers...", peers.len());
 
     let pool = Arc::new(pool);
     let sem = Arc::new(Semaphore::new(max_conns as usize));
@@ -285,20 +296,20 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
             let mut conn = match pool.acquire().await {
                 Ok(conn) => conn,
                 Err(err) => {
-                    println!("Failed to acquire connection from pool: {:?}", err);
+                    tracing::error!("Failed to acquire connection from pool: {:?}", err);
                     drop(permit);
                     return;
                 }
             };
 
             let check_liveness = |addr: &str| -> anyhow::Result<()> {
-                println!("Checking peer liveness for {}", addr);
+                tracing::info!("Checking peer liveness for {}", addr);
                 liveness::tcp_check_liveness(addr, Duration::from_secs(5))
             };
 
             match db::peer::update_liveness(&mut conn, &peer, check_liveness).await {
                 Ok(_) => {}
-                Err(err) => println!("Failed to update liveness for {:?}: {:?}", peer, err),
+                Err(err) => tracing::error!("Failed to update liveness for {:?}: {:?}", peer, err),
             };
             drop(permit);
         }));
@@ -307,9 +318,9 @@ async fn check_liveness(max_conns: u32, timeout: Duration) {
     for handle in handles {
         match handle.await {
             Ok(_) => {}
-            Err(err) => println!("Task failed: {:?}", err),
+            Err(err) => tracing::error!("Task failed: {:?}", err),
         }
     }
 
-    println!("Liveness check complete.");
+    tracing::info!("Liveness check complete.");
 }
