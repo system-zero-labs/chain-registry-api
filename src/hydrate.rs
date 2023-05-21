@@ -81,6 +81,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
+    #[ignore] // Longer integration test
     fn test_shallow_clone() {
         let temp_dir = TempDir::new().unwrap();
 
