@@ -35,7 +35,7 @@ pub async fn get_chain_data(
     let resp = APIResponse {
         meta: Meta {
             commit: chain.commit,
-            updated_at: chain.updated_at,
+            updated_at: chain.created_at,
         },
         result: chain.chain_data,
     };
@@ -73,7 +73,7 @@ pub async fn get_chain_asset_list(
     let resp = APIResponse {
         meta: Meta {
             commit: chain.commit,
-            updated_at: chain.updated_at,
+            updated_at: chain.created_at,
         },
         result: chain.asset_data,
     };
@@ -127,7 +127,7 @@ pub async fn list_chains(
     let resp = ChainList {
         meta: Meta {
             commit: list.commit,
-            updated_at: list.updated_at,
+            updated_at: list.created_at,
         },
         result: chain_list,
     };

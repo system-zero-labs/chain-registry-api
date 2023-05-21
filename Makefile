@@ -21,13 +21,21 @@ postgres: ## Start a postgres container with high connections for testing purpos
       -d postgres \
       postgres -N 1000
 
-.PHONY: psql ## Connect to the test postgres container
-psql:
+.PHONY: psql
+psql: ## Connect to the test postgres container
 	psql -h localhost -U postgres -d chain_registry
 
 .PHONY: prepare
 prepare: ## Prepare sqlx offline data
 	cargo sqlx prepare -- --tests
+
+.PHONY: test
+test: prepare ## Run unit and quick integration tests
+	cargo test
+
+.PHONY: test-all
+test-all: prepare ## Run all tests including longer integration tests
+	cargo test -- --include-ignored
 
 .PHONY: watch
 watch: prepare ## Watch for changes and run cargo
