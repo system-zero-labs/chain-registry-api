@@ -127,7 +127,7 @@ pub async fn list_chains(
     let resp = ChainList {
         meta: Meta {
             commit: list.commit,
-            updated_at: list.updated_at,
+            updated_at: list.created_at,
         },
         result: chain_list,
     };

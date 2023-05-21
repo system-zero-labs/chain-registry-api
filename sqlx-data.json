@@ -123,6 +123,38 @@
     },
     "query": "\n        SELECT commit, created_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1\n        "
   },
+  "63ab69fc3cb2588be44f910bee73e317ff9e2979210c17499bfd2593ececf00e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "commit",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "names",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        SELECT commit, \n        array_agg(name order by name) as names, \n        MAX(created_at) as created_at \n        FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;\n        "
+  },
   "76cefcbc3eb07498d84cdd4a54fcb84c8344088059765db79f2af9981a4536d2": {
     "describe": {
       "columns": [],
@@ -169,38 +201,6 @@
       }
     },
     "query": "SELECT chain_data->>'chain_id' as chain_id FROM chain WHERE id = $1"
-  },
-  "acf87b87f0f471c98f360d2c69de3da1b39a4a641c730945f230a74027afabca": {
-    "describe": {
-      "columns": [
-        {
-          "name": "commit",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "names",
-          "ordinal": 1,
-          "type_info": "TextArray"
-        },
-        {
-          "name": "updated_at",
-          "ordinal": 2,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "\n        SELECT commit, \n        array_agg(name order by name) as names, \n        MAX(updated_at) as updated_at \n        FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;\n        "
   },
   "b89c3da5d70c26aa741c3a51f08ab7f6c743d29086ea2b51368d9718569d8f5f": {
     "describe": {

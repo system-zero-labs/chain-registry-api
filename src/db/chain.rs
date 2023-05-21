@@ -97,7 +97,7 @@ pub async fn truncate_old_chains(executor: impl PgExecutor<'_>, keep: i64) -> sq
 #[derive(Debug)]
 pub struct ChainList {
     pub commit: String,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
     pub names: Vec<String>,
 }
 
@@ -106,7 +106,7 @@ pub async fn list_chains(executor: impl PgExecutor<'_>, network: &str) -> sqlx::
         r#"
         SELECT commit, 
         array_agg(name order by name) as names, 
-        MAX(updated_at) as updated_at 
+        MAX(created_at) as created_at 
         FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;
         "#,
         network,
@@ -116,7 +116,7 @@ pub async fn list_chains(executor: impl PgExecutor<'_>, network: &str) -> sqlx::
 
     Ok(ChainList {
         commit: row.commit,
-        updated_at: row.updated_at.unwrap_or(chrono::Utc::now()),
+        created_at: row.created_at.unwrap_or(chrono::Utc::now()),
         names: row.names.unwrap_or(vec![]),
     })
 }
