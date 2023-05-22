@@ -255,13 +255,14 @@ async fn insert_peers(
     chain_id: i64,
     peer_type: PeerType,
 ) {
-    let peers = match db::peer::find_peers(&mut *tx, chain_id, peer_type.clone()).await {
-        Ok(peers) => peers,
-        Err(err) => {
-            tracing::error!("Failed to find peers for chain {}: {:?}", chain_id, err);
-            return;
-        }
-    };
+    let peers =
+        match db::peer::extract_peers_deprecated(&mut *tx, chain_id, peer_type.clone()).await {
+            Ok(peers) => peers,
+            Err(err) => {
+                tracing::error!("Failed to find peers for chain {}: {:?}", chain_id, err);
+                return;
+            }
+        };
 
     for peer in peers {
         match db::peer::insert_peer(&mut *tx, chain_id, peer_type.clone(), peer.clone()).await {

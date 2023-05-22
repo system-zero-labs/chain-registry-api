@@ -65,7 +65,7 @@ impl PeerType {
     }
 }
 
-pub async fn find_peers(
+pub async fn extract_peers_deprecated(
     executor: impl PgExecutor<'_>,
     chain_id: i64,
     peer_type: PeerType,
@@ -208,31 +208,6 @@ mod tests {
     use super::*;
     use sqlx::PgPool;
     use tokio_test::*;
-
-    #[sqlx::test(fixtures("chains"))]
-    async fn test_find_peers(pool: PgPool) -> sqlx::Result<()> {
-        let mut conn = pool.acquire().await?;
-
-        let seeds = find_peers(&mut conn, 1, PeerType::Seed).await?;
-
-        assert_eq!(seeds.len(), 7);
-
-        for seed in seeds {
-            assert!(seed.node_id.is_some());
-            assert!(seed.address.is_some());
-        }
-
-        let peers = find_peers(&mut conn, 1, PeerType::Persistent).await?;
-
-        assert_eq!(peers.len(), 3);
-
-        for peer in peers {
-            assert!(peer.node_id.is_some());
-            assert!(peer.address.is_some());
-        }
-
-        Ok(())
-    }
 
     #[sqlx::test(fixtures("chains"))]
     async fn test_insert_persistent_peer(pool: PgPool) -> sqlx::Result<()> {

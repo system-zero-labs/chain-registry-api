@@ -10,6 +10,7 @@ CREATE TABLE endpoint
 (
     id         BIGSERIAL PRIMARY KEY,
     address    TEXT          NOT NULL,
+    chain_id   TEXT          NOT NULL,
     kind       endpoint_kind NOT NULL,
     provider   TEXT          NOT NULL DEFAULT 'Unknown',
     created_at TIMESTAMPTZ   NOT NULL DEFAULT NOW()

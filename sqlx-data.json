@@ -155,6 +155,41 @@
     },
     "query": "\n        SELECT commit, \n        array_agg(name order by name) as names, \n        MAX(created_at) as created_at \n        FROM chain WHERE network = $1 GROUP BY commit ORDER BY MAX(created_at) DESC LIMIT 1;\n        "
   },
+  "6ea90d0603964cbf8c9aa20ef5ed8cd29afb6ebe1a63a93c8a5f583dadaef8ea": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "seed",
+                  "peer",
+                  "rpc",
+                  "rest",
+                  "grpc"
+                ]
+              },
+              "name": "endpoint_kind"
+            }
+          }
+        ]
+      }
+    },
+    "query": "\n        WITH cte AS (\n        SELECT\n            chain_data ->> 'chain_id' as chain_id,\n            jsonb_array_elements(chain_data -> 'peers' -> $1) ->> 'id' as node_id,\n            jsonb_array_elements(chain_data -> 'peers' -> $1) ->> 'address' as address,\n            jsonb_array_elements(chain_data -> 'peers' -> $1) ->> 'provider' as provider\n            FROM chain\n            WHERE id = $2\n        )\n        INSERT INTO endpoint (chain_id, address, provider, kind)\n        SELECT\n            chain_id,\n            CONCAT(node_id, '@', address),\n            COALESCE(provider, 'Unknown'),\n            $3\n        FROM cte\n        WHERE chain_id IS NOT NULL AND node_id IS NOT NULL AND address IS NOT NULL\n        ON CONFLICT (address, kind) DO UPDATE SET provider = EXCLUDED.provider\n        RETURNING id\n    "
+  },
   "76cefcbc3eb07498d84cdd4a54fcb84c8344088059765db79f2af9981a4536d2": {
     "describe": {
       "columns": [],
