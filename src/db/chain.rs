@@ -51,6 +51,7 @@ pub async fn insert_chain(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Network {
     Mainnet,
     Testnet,
@@ -68,7 +69,12 @@ impl Network {
         match s.to_lowercase().as_str() {
             "mainnet" => Ok(Network::Mainnet),
             "testnet" => Ok(Network::Testnet),
-            _ => anyhow::bail!("invalid network: {}", s),
+            _ => anyhow::bail!(
+                "invalid network: {}, must be {} or {}",
+                s,
+                Network::Mainnet.as_str(),
+                Network::Testnet.as_str()
+            ),
         }
     }
 }
