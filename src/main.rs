@@ -1,4 +1,4 @@
-use crate::db::peer::PeerType;
+use crate::db::endpoint::{insert_persistent_peers, insert_seeds, join_chain_to_endpoints};
 use axum::Router;
 use clap::{Parser, Subcommand};
 use sqlx::postgres::{PgPool, PgPoolOptions};
@@ -221,8 +221,9 @@ async fn hydrate_chain_registry(
 
     tracing::info!("Inserting peers...");
     for chain_id in chain_ids {
-        insert_peers(&mut tx, chain_id, PeerType::Seed).await;
-        insert_peers(&mut tx, chain_id, PeerType::Persistent).await;
+        insert_peers(&mut tx, chain_id).await.unwrap_or_else(|err| {
+            tracing::error!("Failed to insert peers for chain {:?}: {:?}", chain_id, err);
+        });
     }
 
     let keep = 5;
@@ -253,23 +254,11 @@ async fn hydrate_chain_registry(
 async fn insert_peers(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     chain_id: i64,
-    peer_type: PeerType,
-) {
-    let peers =
-        match db::peer::extract_peers_deprecated(&mut *tx, chain_id, peer_type.clone()).await {
-            Ok(peers) => peers,
-            Err(err) => {
-                tracing::error!("Failed to find peers for chain {}: {:?}", chain_id, err);
-                return;
-            }
-        };
-
-    for peer in peers {
-        match db::peer::insert_peer(&mut *tx, chain_id, peer_type.clone(), peer.clone()).await {
-            Ok(_) => {}
-            Err(err) => tracing::error!("Failed to insert peer {:?}: {:?}", peer, err),
-        }
-    }
+) -> sqlx::Result<()> {
+    let ids = insert_persistent_peers(&mut *tx, &chain_id).await?;
+    join_chain_to_endpoints(&mut *tx, &chain_id, &ids).await?;
+    let ids = insert_seeds(&mut *tx, &chain_id).await?;
+    join_chain_to_endpoints(tx, &chain_id, &ids).await
 }
 
 async fn check_liveness(max_conns: u32, timeout: Duration) {
