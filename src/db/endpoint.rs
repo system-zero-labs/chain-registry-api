@@ -25,21 +25,21 @@ impl EndpointKind {
 
 pub async fn insert_persistent_peers(
     executor: impl PgExecutor<'_>,
-    chain_id: i64,
+    chain_id: &i64,
 ) -> sqlx::Result<Vec<i64>> {
     insert_peers(executor, chain_id, EndpointKind::Peer).await
 }
 
-pub async fn insert_seeds(executor: impl PgExecutor<'_>, chain_id: i64) -> sqlx::Result<Vec<i64>> {
+pub async fn insert_seeds(executor: impl PgExecutor<'_>, chain_id: &i64) -> sqlx::Result<Vec<i64>> {
     insert_peers(executor, chain_id, EndpointKind::Seed).await
 }
 
 async fn insert_peers(
     executor: impl PgExecutor<'_>,
-    chain_id: i64,
+    chain_id: &i64,
     kind: EndpointKind,
 ) -> sqlx::Result<Vec<i64>> {
-    let ids = sqlx::query!(
+    let rows = sqlx::query!(
         r#"
         WITH cte AS (
         SELECT
@@ -68,7 +68,27 @@ async fn insert_peers(
     .fetch_all(executor)
     .await?;
 
-    Ok(ids.into_iter().map(|row| row.id).collect())
+    Ok(rows.into_iter().map(|row| row.id).collect())
+}
+
+pub async fn join_chain_to_endpoints(
+    executor: impl PgExecutor<'_>,
+    chain_id: &i64,
+    endpoint_ids: &Vec<i64>,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        r#"
+    INSERT INTO chain_endpoint (chain_id_fk, endpoint_id_fk)
+        SELECT $1, id FROM endpoint WHERE id = ANY($2)
+        ON CONFLICT DO NOTHING
+    "#,
+        chain_id,
+        &endpoint_ids,
+    )
+    .execute(executor)
+    .await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -76,16 +96,34 @@ mod tests {
     use super::*;
     use sqlx::PgPool;
 
+    const CHAIN_ID: i64 = 1;
+
     #[sqlx::test(fixtures("chains"))]
     async fn test_insert_persistent_peers(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        let ids = insert_persistent_peers(&mut conn, 1).await?;
+        let ids = insert_persistent_peers(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids.len(), 3);
 
         // Tests ON CONFLICT
-        let next_ids = insert_persistent_peers(&mut conn, 1).await?;
+        let next_ids = insert_persistent_peers(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids, next_ids);
+
+        join_chain_to_endpoints(&mut conn, &CHAIN_ID, &ids).await?;
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT endpoint_id_fk FROM chain_endpoint WHERE chain_id_fk = $1
+            "#,
+            CHAIN_ID,
+        )
+        .fetch_all(&mut conn)
+        .await?;
+
+        assert_eq!(rows.len(), 3);
+
+        let join_ids: Vec<i64> = rows.into_iter().map(|row| row.endpoint_id_fk).collect();
+        assert_eq!(ids, join_ids);
 
         Ok(())
     }
@@ -94,12 +132,28 @@ mod tests {
     async fn test_insert_seeds(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        let ids = insert_seeds(&mut conn, 1).await?;
+        let ids = insert_seeds(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids.len(), 7);
 
         // Tests ON CONFLICT
-        let next_ids = insert_seeds(&mut conn, 1).await?;
+        let next_ids = insert_seeds(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids, next_ids);
+
+        join_chain_to_endpoints(&mut conn, &CHAIN_ID, &ids).await?;
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT endpoint_id_fk FROM chain_endpoint WHERE chain_id_fk = $1
+            "#,
+            CHAIN_ID,
+        )
+        .fetch_all(&mut conn)
+        .await?;
+
+        assert_eq!(rows.len(), 7);
+
+        let join_ids: Vec<i64> = rows.into_iter().map(|row| row.endpoint_id_fk).collect();
+        assert_eq!(ids, join_ids);
 
         Ok(())
     }

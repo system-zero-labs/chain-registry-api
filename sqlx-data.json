@@ -84,44 +84,38 @@
     },
     "query": "\n        INSERT INTO chain (name, network, chain_data, asset_data, commit)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (name, network, commit) DO UPDATE SET commit = $5\n        RETURNING id\n        "
   },
-  "44917f43077160c7f01a1f11dc5c667367e6513b4d13adad994e12aceb8c3021": {
+  "37cf5da4f34ca81660bf29303f5eb47e4878f6ae307cc23bad3a665913f859b8": {
     "describe": {
       "columns": [
         {
-          "name": "commit",
+          "name": "endpoint_id_fk",
           "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "chain_data",
-          "ordinal": 2,
-          "type_info": "Jsonb"
-        },
-        {
-          "name": "asset_data",
-          "ordinal": 3,
-          "type_info": "Jsonb"
+          "type_info": "Int8"
         }
       ],
       "nullable": [
-        false,
-        false,
-        false,
         false
       ],
       "parameters": {
         "Left": [
-          "Text",
-          "Text"
+          "Int8"
         ]
       }
     },
-    "query": "\n        SELECT commit, created_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1\n        "
+    "query": "\n            SELECT endpoint_id_fk FROM chain_endpoint WHERE chain_id_fk = $1\n            "
+  },
+  "633240298d42f99a5ca1ddab6433937fa6fd1514e7daa517923a55332c3e6dfa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8Array"
+        ]
+      }
+    },
+    "query": "\n    INSERT INTO chain_endpoint (chain_id_fk, endpoint_id_fk)\n        SELECT $1, id FROM endpoint WHERE id = ANY($2)\n        ON CONFLICT DO NOTHING\n    "
   },
   "63ab69fc3cb2588be44f910bee73e317ff9e2979210c17499bfd2593ececf00e": {
     "describe": {
@@ -284,6 +278,51 @@
       }
     },
     "query": "SELECT commit FROM chain"
+  },
+  "e55e4e19898cca511287378a8a96b7d61500badcc4864f114e26480f627206db": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "commit",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "chain_data",
+          "ordinal": 3,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "asset_data",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        SELECT id, commit, created_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1\n        "
   },
   "edf2e69e5a87eb580c15ee584b1e14bccc4d3e24ebbd914888c52ad8d34f6bc3": {
     "describe": {
