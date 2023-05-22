@@ -1,7 +1,5 @@
 use crate::api::{from_db_error, internal_error, APIError, Meta};
-use crate::db::peer::{
-    filter_by_type, filter_recent_peers, find_commit, find_updated_at, PeerFilter, PeerType,
-};
+use crate::db::peer::max_updated_at;
 use axum::{extract::Path, extract::Query, extract::State, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
@@ -53,44 +51,45 @@ pub async fn list_peers(
     Path((network, chain_name)): Path<(String, String)>,
     params: Option<Query<PeerParams>>,
 ) -> Result<Json<PeerList>, APIError> {
-    let include_all = params.map(|p| p.include_all).unwrap_or(false);
-    let filter = PeerFilter {
-        chain_name,
-        network,
-        include_all,
-    };
-
-    let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let peers = filter_recent_peers(&mut conn, &filter)
-        .await
-        .map_err(from_db_error)?;
-
-    let commit = find_commit(&peers).unwrap_or_default();
-    let updated_at = find_updated_at(&peers).unwrap_or_default();
-
-    let resp = PeerList {
-        meta: Meta { commit, updated_at },
-        result: PeerResult {
-            seeds: filter_by_type(&peers, PeerType::Seed)
-                .into_iter()
-                .map(|p| Peer {
-                    address: p.address,
-                    last_liveness_check: p.updated_at,
-                    is_alive: p.is_alive,
-                })
-                .collect(),
-            persistent: filter_by_type(&peers, PeerType::Persistent)
-                .into_iter()
-                .map(|p| Peer {
-                    address: p.address,
-                    last_liveness_check: p.updated_at,
-                    is_alive: p.is_alive,
-                })
-                .collect(),
-        },
-    };
-
-    Ok(Json(resp))
+    panic!("TODO");
+    // let include_all = params.map(|p| p.include_all).unwrap_or(false);
+    // let filter = PeerFilter {
+    //     chain_name,
+    //     network,
+    //     include_all,
+    // };
+    //
+    // let mut conn = pool.acquire().await.map_err(internal_error)?;
+    // let peers = filter_recent_peers(&mut conn, &filter)
+    //     .await
+    //     .map_err(from_db_error)?;
+    //
+    // let commit = find_commit(&peers).unwrap_or_default();
+    // let updated_at = max_updated_at(&peers).unwrap_or_default();
+    //
+    // let resp = PeerList {
+    //     meta: Meta { commit, updated_at },
+    //     result: PeerResult {
+    //         seeds: filter_by_type(&peers, PeerType::Seed)
+    //             .into_iter()
+    //             .map(|p| Peer {
+    //                 address: p.address,
+    //                 last_liveness_check: p.updated_at,
+    //                 is_alive: p.is_alive,
+    //             })
+    //             .collect(),
+    //         persistent: filter_by_type(&peers, PeerType::Persistent)
+    //             .into_iter()
+    //             .map(|p| Peer {
+    //                 address: p.address,
+    //                 last_liveness_check: p.updated_at,
+    //                 is_alive: p.is_alive,
+    //             })
+    //             .collect(),
+    //     },
+    // };
+    //
+    // Ok(Json(resp))
 }
 
 /// Get a chain's live seeds as a comma-separated string for use in config.toml.

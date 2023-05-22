@@ -1,4 +1,4 @@
-use crate::db::endpoint::{insert_persistent_peers, insert_seeds, join_chain_to_endpoints};
+use crate::db::peer::{insert_persistent_peers, insert_seeds, join_chain_to_endpoints};
 use axum::Router;
 use clap::{Parser, Subcommand};
 use sqlx::postgres::{PgPool, PgPoolOptions};
