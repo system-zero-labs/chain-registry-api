@@ -105,6 +105,17 @@ mod tests {
         let ids = insert_persistent_peers(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids.len(), 3);
 
+        let seed = sqlx::query!(
+            r#"
+            SELECT distinct(kind)::text as kind FROM endpoint WHERE id = $1
+            "#,
+            ids[0],
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert_eq!(seed.kind.unwrap(), "peer");
+
         // Tests ON CONFLICT
         let next_ids = insert_persistent_peers(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids, next_ids);
@@ -134,6 +145,17 @@ mod tests {
 
         let ids = insert_seeds(&mut conn, &CHAIN_ID).await?;
         assert_eq!(ids.len(), 7);
+
+        let seed = sqlx::query!(
+            r#"
+            SELECT distinct(kind)::text as kind FROM endpoint WHERE id = $1
+            "#,
+            ids[0],
+        )
+        .fetch_one(&mut conn)
+        .await?;
+
+        assert_eq!(seed.kind.unwrap(), "seed");
 
         // Tests ON CONFLICT
         let next_ids = insert_seeds(&mut conn, &CHAIN_ID).await?;

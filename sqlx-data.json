@@ -249,6 +249,26 @@
     },
     "query": "SELECT count(*) FROM chain"
   },
+  "c61e5f1135f719ab4aaa2e56c118ba95b7f954999bd090a13291ed83f690ca18": {
+    "describe": {
+      "columns": [
+        {
+          "name": "kind",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n            SELECT distinct(kind)::text as kind FROM endpoint WHERE id = $1\n            "
+  },
   "cd0802b912aa77f78105a585f0ff9c16b4bcf710cacc1cc0c65dfd561a0e507f": {
     "describe": {
       "columns": [],
