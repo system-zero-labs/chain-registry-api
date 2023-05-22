@@ -51,6 +51,28 @@ pub async fn insert_chain(
     }
 }
 
+pub enum Network {
+    Mainnet,
+    Testnet,
+}
+
+impl Network {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Network::Mainnet => "mainnet",
+            Network::Testnet => "testnet",
+        }
+    }
+
+    pub fn from_str(s: &str) -> anyhow::Result<Network> {
+        match s.to_lowercase().as_str() {
+            "mainnet" => Ok(Network::Mainnet),
+            "testnet" => Ok(Network::Testnet),
+            _ => anyhow::bail!("invalid network: {}", s),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Chain {
     pub id: i64,
@@ -60,21 +82,21 @@ pub struct Chain {
     pub asset_data: JsonValue,
 }
 
-pub async fn find_chain(
-    executor: impl PgExecutor<'_>,
-    network: &str,
-    chain_name: &str,
-) -> sqlx::Result<Chain> {
-    sqlx::query_as!(
+impl Chain {
+    pub async fn from_name(
+        executor: impl PgExecutor<'_>,
+        name: &str,
+        network: &Network,
+    ) -> sqlx::Result<Self> {
+        sqlx::query_as!(
         Chain,
         r#"
         SELECT id, commit, created_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1
         "#,
-        chain_name,
-        network,
-    )
-    .fetch_one(executor)
-        .await
+        name,
+        network.as_str(),
+    ).fetch_one(executor).await
+    }
 }
 
 pub async fn truncate_old_chains(executor: impl PgExecutor<'_>, keep: i64) -> sqlx::Result<()> {
@@ -102,7 +124,10 @@ pub struct ChainList {
     pub names: Vec<String>,
 }
 
-pub async fn list_chains(executor: impl PgExecutor<'_>, network: &str) -> sqlx::Result<ChainList> {
+pub async fn recent_chains(
+    executor: impl PgExecutor<'_>,
+    network: &str,
+) -> sqlx::Result<ChainList> {
     let row = sqlx::query!(
         r#"
         SELECT commit, 
@@ -192,10 +217,10 @@ mod tests {
     }
 
     #[sqlx::test(fixtures("chains"))]
-    async fn test_find_chain(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_from_name(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        let chain = find_chain(&mut conn, "mainnet", "cosmoshub").await?;
+        let chain = Chain::from_name(&mut conn, "cosmoshub", &Network::Mainnet).await?;
 
         assert_eq!(chain.commit, "stubcommit");
 
@@ -215,10 +240,10 @@ mod tests {
     }
 
     #[sqlx::test(fixtures("chains"))]
-    async fn test_list_chains(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_recent_chains(pool: PgPool) -> sqlx::Result<()> {
         let mut conn = pool.acquire().await?;
 
-        let list = list_chains(&mut conn, "mainnet").await?;
+        let list = recent_chains(&mut conn, "mainnet").await?;
 
         assert_eq!(list.commit, "stubcommit");
         assert_eq!(list.names, vec!["cosmoshub"]);

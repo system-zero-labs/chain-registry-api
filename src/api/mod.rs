@@ -26,8 +26,9 @@ pub struct APIResponse<T> {
 
 #[derive(Debug)]
 pub enum APIError {
-    NotFound,
+    BadRequest(String),
     InternalServerError(String),
+    NotFound,
 }
 
 fn internal_error(err: impl std::fmt::Display) -> APIError {
@@ -44,9 +45,15 @@ fn from_db_error(err: sqlx::Error) -> APIError {
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
+            APIError::BadRequest(err) => (StatusCode::BAD_REQUEST, err),
             APIError::NotFound => (StatusCode::NOT_FOUND, "Resource not found".to_string()),
-            // TODO: don't leak internal error messages to end user
-            APIError::InternalServerError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err),
+            APIError::InternalServerError(err) => {
+                tracing::error!("Internal server error: {}", err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal service error".to_string(),
+                )
+            }
         };
         let body = json!({ "error": message });
         (status, Json(body)).into_response()

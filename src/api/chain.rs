@@ -1,5 +1,5 @@
 use crate::api::{from_db_error, internal_error, APIError, APIResponse, Meta};
-use crate::db::chain;
+use crate::db::chain::{recent_chains, Chain, Network};
 use axum::{extract::Path, extract::State, Json};
 use serde::Serialize;
 use sqlx::postgres::PgPool;
@@ -28,7 +28,10 @@ pub async fn get_chain_data(
     Path((network, chain_name)): Path<(String, String)>,
 ) -> Result<Json<APIResponse<serde_json::Value>>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let chain = chain::find_chain(&mut conn, network.as_str(), chain_name.as_str())
+    // TODO: DRY up network handling in middleware
+    let network =
+        Network::from_str(network.as_str()).map_err(|err| APIError::BadRequest(err.to_string()))?;
+    let chain = Chain::from_name(&mut conn, chain_name.as_str(), &network)
         .await
         .map_err(from_db_error)?;
 
@@ -66,7 +69,10 @@ pub async fn get_chain_asset_list(
     Path((network, chain_name)): Path<(String, String)>,
 ) -> Result<Json<APIResponse<serde_json::Value>>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let chain = chain::find_chain(&mut conn, network.as_str(), chain_name.as_str())
+    // TODO: DRY up network handling in middleware
+    let network =
+        Network::from_str(network.as_str()).map_err(|err| APIError::BadRequest(err.to_string()))?;
+    let chain = Chain::from_name(&mut conn, chain_name.as_str(), &network)
         .await
         .map_err(from_db_error)?;
 
@@ -111,7 +117,7 @@ pub async fn list_chains(
     Path(network): Path<String>,
 ) -> Result<Json<ChainList>, APIError> {
     let mut conn = pool.acquire().await.map_err(internal_error)?;
-    let list = chain::list_chains(&mut conn, network.as_str())
+    let list = recent_chains(&mut conn, network.as_str())
         .await
         .map_err(from_db_error)?;
 
