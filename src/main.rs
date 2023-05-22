@@ -262,55 +262,56 @@ async fn insert_peers(
 }
 
 async fn check_liveness(max_conns: u32, timeout: Duration) {
-    let pool = connect_pool(max_conns, timeout).await;
-
-    let mut conn = pool
-        .acquire()
-        .await
-        .expect("Failed to acquire connection from pool");
-
-    let peers = db::peer::all_recent_peers(&mut conn)
-        .await
-        .expect("Failed to get recent peers");
-
-    tracing::info!("Checking liveness for {} peers...", peers.len());
-
-    let pool = Arc::new(pool);
-    let sem = Arc::new(Semaphore::new(max_conns as usize));
-    let mut handles = vec![];
-
-    for peer in peers {
-        let pool = std::sync::Arc::clone(&pool);
-        let permit = sem.clone().acquire_owned().await.unwrap();
-        handles.push(tokio::spawn(async move {
-            let mut conn = match pool.acquire().await {
-                Ok(conn) => conn,
-                Err(err) => {
-                    tracing::error!("Failed to acquire connection from pool: {:?}", err);
-                    drop(permit);
-                    return;
-                }
-            };
-
-            let check_liveness = |addr: &str| -> anyhow::Result<()> {
-                tracing::info!("Checking peer liveness for {}", addr);
-                liveness::tcp_check_liveness(addr, Duration::from_secs(5))
-            };
-
-            match db::peer::update_liveness(&mut conn, &peer, check_liveness).await {
-                Ok(_) => {}
-                Err(err) => tracing::error!("Failed to update liveness for {:?}: {:?}", peer, err),
-            };
-            drop(permit);
-        }));
-    }
-
-    for handle in handles {
-        match handle.await {
-            Ok(_) => {}
-            Err(err) => tracing::error!("Task failed: {:?}", err),
-        }
-    }
-
-    tracing::info!("Liveness check complete.");
+    println!("TODO")
+    // let pool = connect_pool(max_conns, timeout).await;
+    //
+    // let mut conn = pool
+    //     .acquire()
+    //     .await
+    //     .expect("Failed to acquire connection from pool");
+    //
+    // let peers = db::peer::all_recent_peers(&mut conn)
+    //     .await
+    //     .expect("Failed to get recent peers");
+    //
+    // tracing::info!("Checking liveness for {} peers...", peers.len());
+    //
+    // let pool = Arc::new(pool);
+    // let sem = Arc::new(Semaphore::new(max_conns as usize));
+    // let mut handles = vec![];
+    //
+    // for peer in peers {
+    //     let pool = std::sync::Arc::clone(&pool);
+    //     let permit = sem.clone().acquire_owned().await.unwrap();
+    //     handles.push(tokio::spawn(async move {
+    //         let mut conn = match pool.acquire().await {
+    //             Ok(conn) => conn,
+    //             Err(err) => {
+    //                 tracing::error!("Failed to acquire connection from pool: {:?}", err);
+    //                 drop(permit);
+    //                 return;
+    //             }
+    //         };
+    //
+    //         let check_liveness = |addr: &str| -> anyhow::Result<()> {
+    //             tracing::info!("Checking peer liveness for {}", addr);
+    //             liveness::tcp_check_liveness(addr, Duration::from_secs(5))
+    //         };
+    //
+    //         match db::peer::update_liveness(&mut conn, &peer, check_liveness).await {
+    //             Ok(_) => {}
+    //             Err(err) => tracing::error!("Failed to update liveness for {:?}: {:?}", peer, err),
+    //         };
+    //         drop(permit);
+    //     }));
+    // }
+    //
+    // for handle in handles {
+    //     match handle.await {
+    //         Ok(_) => {}
+    //         Err(err) => tracing::error!("Task failed: {:?}", err),
+    //     }
+    // }
+    //
+    // tracing::info!("Liveness check complete.");
 }
