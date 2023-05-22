@@ -53,6 +53,7 @@ pub async fn insert_chain(
 
 #[derive(Debug, Clone)]
 pub struct Chain {
+    pub id: i64,
     pub commit: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub chain_data: JsonValue,
@@ -67,7 +68,7 @@ pub async fn find_chain(
     sqlx::query_as!(
         Chain,
         r#"
-        SELECT commit, created_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1
+        SELECT id, commit, created_at, chain_data, asset_data FROM chain WHERE name = $1 AND network = $2 ORDER BY created_at DESC LIMIT 1
         "#,
         chain_name,
         network,
