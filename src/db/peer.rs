@@ -1,7 +1,7 @@
 use sqlx::PgExecutor;
 
 #[derive(Debug, Clone)]
-pub struct Peer {
+pub struct PeerDeprecated {
     pub id: i64,
     pub address: String,
     pub commit: String,
@@ -10,17 +10,17 @@ pub struct Peer {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-pub type Peers = Vec<Peer>;
+pub type PeersDeprecated = Vec<PeerDeprecated>;
 
-pub fn find_commit(peers: &Peers) -> Option<String> {
+pub fn find_commit(peers: &PeersDeprecated) -> Option<String> {
     peers.first().map(|p| p.commit.clone())
 }
 
-pub fn find_updated_at(peers: &Peers) -> Option<chrono::DateTime<chrono::Utc>> {
+pub fn find_updated_at(peers: &PeersDeprecated) -> Option<chrono::DateTime<chrono::Utc>> {
     peers.iter().map(|p| p.updated_at.clone()).max()
 }
 
-pub fn filter_by_type(peers: &Peers, peer_type: PeerType) -> Peers {
+pub fn filter_by_type(peers: &PeersDeprecated, peer_type: PeerType) -> PeersDeprecated {
     peers
         .iter()
         .filter(|p| PeerType::from_str(p.peer_type.as_str()) == Some(peer_type))
@@ -44,9 +44,9 @@ impl PeerType {
     }
 }
 
-pub async fn all_recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<Peers> {
+pub async fn all_recent_peers(executor: impl PgExecutor<'_>) -> sqlx::Result<PeersDeprecated> {
     sqlx::query_as!(
-        Peer,
+        PeerDeprecated,
         r#"
         WITH recent_chain AS (
             SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1
@@ -63,9 +63,9 @@ pub async fn recent_peers(
     executor: impl PgExecutor<'_>,
     chain_name: &str,
     network: &str,
-) -> sqlx::Result<Vec<Peer>> {
+) -> sqlx::Result<Vec<PeerDeprecated>> {
     sqlx::query_as!(
-        Peer,
+        PeerDeprecated,
         r#"
         WITH recent_chain AS (
             SELECT commit, created_at FROM chain ORDER BY created_at DESC LIMIT 1
@@ -92,10 +92,10 @@ pub struct PeerFilter {
 pub async fn filter_recent_peers(
     executor: impl PgExecutor<'_>,
     filter: &PeerFilter,
-) -> sqlx::Result<Peers> {
+) -> sqlx::Result<PeersDeprecated> {
     let peers = recent_peers(executor, &filter.chain_name, &filter.network).await?;
 
-    let filtered: Vec<Peer> = peers
+    let filtered: Vec<PeerDeprecated> = peers
         .into_iter()
         .filter(|p| {
             if filter.include_all {
@@ -114,7 +114,7 @@ pub async fn filter_recent_peers(
 
 pub async fn update_liveness<F: Fn(&str) -> anyhow::Result<()>>(
     executor: impl PgExecutor<'_>,
-    peer: &Peer,
+    peer: &PeerDeprecated,
     check: F,
 ) -> sqlx::Result<()> {
     let alive = check(&peer.address).is_ok();
@@ -194,7 +194,7 @@ mod tests {
             anyhow::bail!("boom")
         };
 
-        let peer = Peer {
+        let peer = PeerDeprecated {
             id: 1,
             address: "stub@address".to_string(),
             commit: "stub".to_string(),
