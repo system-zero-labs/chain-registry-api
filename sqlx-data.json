@@ -104,6 +104,50 @@
     },
     "query": "\n            SELECT endpoint_id_fk FROM chain_endpoint WHERE chain_id_fk = $1\n            "
   },
+  "5e70f83a042a30d3f95cf839ea2c8a9dbadf8c1b21d850ecd9724a3bdcabb806": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "commit",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "chain_data",
+          "ordinal": 3,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "asset_data",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n        SELECT id, commit, created_at, chain_data, asset_data FROM chain WHERE id = $1\n        "
+  },
   "633240298d42f99a5ca1ddab6433937fa6fd1514e7daa517923a55332c3e6dfa": {
     "describe": {
       "columns": [],
@@ -183,20 +227,6 @@
       }
     },
     "query": "\n        WITH cte AS (\n        SELECT\n            chain_data ->> 'chain_id' as chain_id,\n            jsonb_array_elements(chain_data -> 'peers' -> $1) ->> 'id' as node_id,\n            jsonb_array_elements(chain_data -> 'peers' -> $1) ->> 'address' as address,\n            jsonb_array_elements(chain_data -> 'peers' -> $1) ->> 'provider' as provider\n            FROM chain\n            WHERE id = $2\n        )\n        INSERT INTO endpoint (chain_id, address, provider, kind)\n        SELECT\n            chain_id,\n            CONCAT(node_id, '@', address),\n            COALESCE(provider, 'Unknown'),\n            $3\n        FROM cte\n        WHERE chain_id IS NOT NULL AND node_id IS NOT NULL AND address IS NOT NULL\n        ON CONFLICT (address, kind) DO UPDATE SET provider = EXCLUDED.provider\n        RETURNING id\n    "
-  },
-  "76cefcbc3eb07498d84cdd4a54fcb84c8344088059765db79f2af9981a4536d2": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n        INSERT INTO peer (chain_id_fk, address, type)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (chain_id_fk, address, type) DO UPDATE SET is_alive = peer.is_alive\n        "
   },
   "89952a084d238f696a23b3a406f9bb7948e83f268c9652aa99a42eed3f0e0063": {
     "describe": {
@@ -460,86 +490,5 @@
       }
     },
     "query": "\n            SELECT is_alive FROM peer WHERE id = 1\n            "
-  },
-  "f35645bf1924e1ecb4544f1d79c7c4cd810d3628fa19cd2b6bc3a7de518e9e6a": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int8"
-        },
-        {
-          "name": "type",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "address",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "is_alive",
-          "ordinal": 3,
-          "type_info": "Bool"
-        },
-        {
-          "name": "chain_id_fk",
-          "ordinal": 4,
-          "type_info": "Int8"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 5,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "updated_at",
-          "ordinal": 6,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            SELECT * FROM peer\n            WHERE chain_id_fk = 1\n            LIMIT 1\n            "
-  },
-  "f3a8700dbd7c7a6315b23d7c492e48c9790103495a425123545082d80607fc97": {
-    "describe": {
-      "columns": [
-        {
-          "name": "node_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "address",
-          "ordinal": 1,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Int8"
-        ]
-      }
-    },
-    "query": "\n        select \n        jsonb_array_elements(chain_data->'peers'->$1)->>'id' as node_id, \n        jsonb_array_elements(chain_data->'peers'->$1)->>'address' as address\n        from chain where id = $2\n        "
   }
 }

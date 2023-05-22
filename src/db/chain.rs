@@ -79,7 +79,7 @@ impl Network {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Chain {
     pub id: i64,
     pub commit: String,
@@ -89,6 +89,18 @@ pub struct Chain {
 }
 
 impl Chain {
+    pub async fn from_id(executor: impl PgExecutor<'_>, id: i64) -> sqlx::Result<Self> {
+        sqlx::query_as!(
+            Chain,
+            r#"
+        SELECT id, commit, created_at, chain_data, asset_data FROM chain WHERE id = $1
+        "#,
+            id
+        )
+        .fetch_one(executor)
+        .await
+    }
+
     pub async fn from_name(
         executor: impl PgExecutor<'_>,
         name: &str,
@@ -241,6 +253,9 @@ mod tests {
             chain.asset_data.get("chain_name").unwrap().as_str(),
             Some("cosmoshub")
         );
+
+        let same_chain = Chain::from_id(&mut conn, chain.id).await?;
+        assert_eq!(chain, same_chain);
 
         Ok(())
     }
