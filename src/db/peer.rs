@@ -1,7 +1,6 @@
 use super::chain::Chain;
 use super::endpoint::EndpointKind;
 use sqlx::PgExecutor;
-use std::vec::IntoIter;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Peer {
