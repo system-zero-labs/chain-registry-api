@@ -1,8 +1,7 @@
-use sqlx::PgExecutor;
+use sqlx::postgres::{PgHasArrayType, PgTypeInfo};
 
-#[derive(Debug, Clone, sqlx::Type)]
-#[sqlx(type_name = "endpoint_kind")]
-#[sqlx(rename_all = "lowercase")]
+#[derive(Debug, Clone, Eq, PartialEq, sqlx::Type)]
+#[sqlx(type_name = "endpoint_kind", rename_all = "lowercase")]
 pub enum EndpointKind {
     Peer,
     Seed,
@@ -20,5 +19,11 @@ impl EndpointKind {
             EndpointKind::Rest => "rest",
             EndpointKind::Grpc => "grpc",
         }
+    }
+}
+
+impl PgHasArrayType for EndpointKind {
+    fn array_type_info() -> PgTypeInfo {
+        PgTypeInfo::with_name("_endpoint_kind")
     }
 }

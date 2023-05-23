@@ -1,3 +1,4 @@
+use super::peer::Peers;
 use sqlx::{types::JsonValue, PgExecutor};
 use std::fs;
 use std::path::PathBuf;
@@ -89,7 +90,7 @@ pub struct Chain {
 }
 
 impl Chain {
-    pub async fn from_id(executor: impl PgExecutor<'_>, id: i64) -> sqlx::Result<Self> {
+    pub async fn new(executor: impl PgExecutor<'_>, id: &i64) -> sqlx::Result<Self> {
         sqlx::query_as!(
             Chain,
             r#"
@@ -254,7 +255,7 @@ mod tests {
             Some("cosmoshub")
         );
 
-        let same_chain = Chain::from_id(&mut conn, chain.id).await?;
+        let same_chain = Chain::new(&mut conn, &chain.id).await?;
         assert_eq!(chain, same_chain);
 
         Ok(())

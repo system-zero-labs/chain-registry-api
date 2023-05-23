@@ -1,5 +1,4 @@
 use crate::api::{from_db_error, internal_error, APIError, Meta};
-use crate::db::peer::max_updated_at;
 use axum::{extract::Path, extract::Query, extract::State, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
