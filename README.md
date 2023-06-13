@@ -47,8 +47,3 @@ Selfishly, I wanted to learn Rust. I've been following Rust since 2017, but have
 This project is now that purpose.
 
 Additionally, I wanted something super high performance and robust, so I could host as cheaply as possible.
-
-## Is this a Strangelove project?
-
-No. Although I work for [Strangelove](https://github.com/strangelove-ventures), this project is created,
-maintained, and hosted independently by [David Nix](https://twitter.com/davidnix_).
