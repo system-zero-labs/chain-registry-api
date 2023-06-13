@@ -12,14 +12,17 @@ tools: ## Install dev tools
 	cargo install --version="~0.6" sqlx-cli --no-default-features --features rustls,postgres
 
 .PHONY: postgres
-postgres: ## Start a postgres container with high connections for testing purposes
-	docker run \
-      -e POSTGRES_USER=postgres \
-      -e POSTGRES_PASSWORD=postgres \
-      -e POSTGRES_DB=chain_registry \
-      -p 5432:5432 \
-      -d postgres \
-      postgres -N 1000
+postgres: ## Start a local postgres db
+	brew services start postgresql@15
+
+.PHONY: stop-postgres
+stop-postgres: ## Stop the postgres db
+	brew services stop postgresql@15
+
+.PHONY: initdb
+initdb: ## Initialize the local postgres db
+	psql postgres -c "CREATE ROLE postgres with SUPERUSER LOGIN"
+	createdb chain_registry
 
 .PHONY: psql
 psql: ## Connect to the test postgres container
