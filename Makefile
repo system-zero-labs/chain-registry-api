@@ -22,8 +22,8 @@ postgres: ## Start a postgres container with high connections for testing purpos
       -e POSTGRES_PASSWORD=postgres \
       -e POSTGRES_DB=chain_registry \
       -p 5432:5432 \
-      -d postgres \
-      postgres -N 1000
+      --detach \
+      flyio/postgres-flex-timescaledb:15 -N 1000 -c shared_preload_libraries=timescaledb
 
 .PHONY: psql
 psql: ## Connect to the test postgres container
