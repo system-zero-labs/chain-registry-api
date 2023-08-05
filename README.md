@@ -2,9 +2,13 @@
 
 A REST API for the Cosmos [Chain Registry](https://github.com/cosmos/chain-registry).
 
-## Features
+# Important notice about hosting
 
-See the [official marketing page](https://chainregistry.xyz).
+In an effort to cut expenses, as of Aug 5 2023, I am no longer hosting this API service.
+
+If a company or individual is interested in sponsoring hosting, please reach out to me via a method on https://davidnix.io.
+
+It's not hard to host yourself. See the [render.yaml](./render.yaml) as easy example to host on Render.com.
 
 ## Roadmap
 
